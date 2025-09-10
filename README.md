@@ -1,5 +1,9 @@
 # Independent Study: AI Forecasting Agent
 
+Instructor: Fatih Nayebi
+
+Member: Ayda Elzohbi, Arturo Medina, Arial Huang, Katherine Gong
+
 ## Requirements
 
 - Python >= 3.9
@@ -28,4 +32,8 @@ pip install -r requirements.txt
 
 ### 2. Set up .env file
 
-Rename .env.example to .env locally, and paste your OPENAI_API_KEY into the placeholder.
+Rename the file ```.env.example``` to ```.env``` locally, and paste your api key into the placeholder.
+For example:
+```
+OPENAI_API_KEY='sk-proj-fgtMzLhsNP0BfHJPnrzFeUEWtUeVnQdUpyYjnMClr5ktCc7M_-ZMnuuUBHURGITK9bChsxVeVWT3BlbkFJbZBbQjvjn9_ujYWsh3ViYG820rw4YQw5khKyqBmXF0f9QwC2AmzcpbWJADkAgeEBsYupU2DD0'
+```
