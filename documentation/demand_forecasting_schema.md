@@ -62,6 +62,20 @@
 | `store_district` | VARCHAR(50) | District or area classification |
 | `parking_availability` | VARCHAR(20) | Parking situation (ample, limited, street) |
 
+### Daily Inventory & Operations
+| Column Name | Data Type | Description |
+|-------------|-----------|-------------|
+| `beginning_inventory` | INTEGER | Units in stock at start of day |
+| `ending_inventory` | INTEGER | Units in stock at end of day |
+| `units_received` | INTEGER | New inventory received during the day |
+| `units_transferred_out` | INTEGER | Units transferred to other stores |
+| `units_transferred_in` | INTEGER | Units received from other stores |
+| `inventory_adjustments` | INTEGER | Adjustments (damage, theft, counting errors) |
+| `stockout_occurred` | BOOLEAN | Indicates if product was out of stock |
+| `stockout_duration_hours` | DECIMAL(4,1) | Hours the product was unavailable |
+| `days_of_supply` | INTEGER | Days of inventory remaining at current sales rate |
+| `inventory_turnover_velocity` | DECIMAL(6,3) | Daily inventory turn rate |
+
 ### Weather & Environmental Data
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
