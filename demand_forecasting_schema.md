@@ -2,12 +2,6 @@
 
 **Table Structure**: One row per date-product-store combination with all related information included.
 
----
-
-## Unified Daily Demand Forecasting Table
-
-*Primary table structure: One comprehensive row per date-product-store combination*
-
 ### Primary Identifiers
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
