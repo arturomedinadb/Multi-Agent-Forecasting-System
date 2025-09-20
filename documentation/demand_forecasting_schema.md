@@ -26,7 +26,6 @@
 ### Pricing & Promotion Information
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
-| `unit_orig_price` | DECIMAL(8,2) | Original pricing of the product |
 | `promotional_price` | DECIMAL(8,2) | Promotional price (if on promotion) |
 | `promotion_active` | BOOLEAN | Indicates if product was on promotion |
 | `promotion_start_date` | DATE | When current promotion started |
@@ -38,6 +37,7 @@
 | `category` | VARCHAR(50) | Top-level product category |
 | `subcategory` | VARCHAR(50) | Detailed subcategory |
 | `product_launch_date` | DATE | When product was first introduced |
+| `unit_orig_price` | DECIMAL(8,2) | Original pricing of the product |
 | `is_seasonal_product` | BOOLEAN | Indicates seasonal demand patterns |
 | `seasonal_peak_months` | VARCHAR(50) | Peak selling months (if seasonal) |
 
