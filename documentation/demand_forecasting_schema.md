@@ -20,14 +20,13 @@
 ### Daily Sales Performance
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
-| `unit_price` | DECIMAL(8,2) | Price for the day |
+| `unit_net_price` | DECIMAL(8,2) | Price per unit actually charged for the day |
 | `units_sold` | INTEGER | Total units sold during the day |
 
 ### Pricing & Promotion Information
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
-| `regular_price` | DECIMAL(8,2) | Original pricing of the product |
-| `actual_selling_price` | DECIMAL(8,2) | Average price actually charged (Unit net price)|
+| `unit_orig_price` | DECIMAL(8,2) | Original pricing of the product |
 | `promotional_price` | DECIMAL(8,2) | Promotional price (if on promotion) |
 | `promotion_active` | BOOLEAN | Indicates if product was on promotion |
 | `promotion_start_date` | DATE | When current promotion started |
