@@ -61,8 +61,8 @@
 ### Weather & Environmental Data
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
-| `temperature_average_f` | INTEGER | Average daily temperature |
-| `precipitation_inches` | DECIMAL(4,2) | Total daily precipitation |
+| `avg_temperature_c` | INTEGER | Average monthly temperature |
+| `precipitation_inches` | DECIMAL(4,2) | Total monthly precipitation |
 | `severe_weather_flag` | BOOLEAN | Severe weather event occurred |
 
 ### Economic & Market Context
@@ -70,5 +70,4 @@
 |-------------|-----------|-------------|
 | `unemployment_rate_month` | DECIMAL(4,2) | Local unemployment percentage of the transaction month |
 | `population_month` | INTEGER | Total population amount of the transaction month |
-| `gdp_month` | INTEGER | GDP of the transaction month |
 | `cpi_month` | INTEGER | CPI of the transaction month |
