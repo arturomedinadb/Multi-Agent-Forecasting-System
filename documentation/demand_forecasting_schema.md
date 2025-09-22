@@ -68,6 +68,7 @@
 ### Economic & Market Context
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
-| `unemployment_rate_month` | DECIMAL(4,2) | Local unemployment percentage of the transaction month |
-| `population_month` | INTEGER | Total population amount of the transaction month |
-| `cpi_month` | INTEGER | CPI of the transaction month |
+| `unemployment_rate_monthly` | DECIMAL(4,2) | Local unemployment percentage of the transaction month |
+| `population_monthly` | INTEGER | Local population of the transaction month |
+| `cpi_monthly` | INTEGER | Local CPI of the transaction month |
+| `gdp_monthly` | INTEGER | Total Canadian GDP of the transaction month |
