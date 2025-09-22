@@ -68,7 +68,7 @@
 ### Economic & Market Context
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
-| `unemployment_rate` | DECIMAL(4,2) | Local unemployment percentage |
-| `population` | INTEGER | Local population amount |
-| `gdp` | INTEGER | GDP of the transaction month |
-| `cpi` | INTEGER | CPI of the transaction month |
+| `unemployment_rate_month` | DECIMAL(4,2) | Local unemployment percentage of the transaction month |
+| `population_month` | INTEGER | Total population amount of the transaction month |
+| `gdp_month` | INTEGER | GDP of the transaction month |
+| `cpi_month` | INTEGER | CPI of the transaction month |
