@@ -68,8 +68,7 @@
 ### Economic & Market Context
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
-| `consumer_confidence_index` | DECIMAL(6,2) | Regional consumer confidence level |
 | `unemployment_rate` | DECIMAL(4,2) | Local unemployment percentage |
-| `gas_price_average` | DECIMAL(4,2) | Local average gas price per gallon |
-| `economic_conditions` | VARCHAR(20) | General economic climate (strong, stable, weak) |
+| `population` | INTEGER | Local population amount |
+| `gdp` | INTEGER | GDP of the transaction month |
 | `cpi` | INTEGER | CPI of the transaction month |
