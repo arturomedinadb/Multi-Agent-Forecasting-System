@@ -62,8 +62,7 @@
 | Column Name | Data Type | Description |
 |-------------|-----------|-------------|
 | `avg_temperature_c` | INTEGER | Average monthly temperature |
-| `precipitation_inches` | DECIMAL(4,2) | Total monthly precipitation |
-| `severe_weather_flag` | BOOLEAN | Severe weather event occurred |
+| `precipitation_mm` | DECIMAL(4,2) | Total monthly precipitation |
 
 ### Economic & Market Context
 | Column Name | Data Type | Description |
