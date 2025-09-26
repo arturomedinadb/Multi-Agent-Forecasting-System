@@ -3,11 +3,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "schema-mapping-agent"
+name = "ai_forecasting_agents"
 version = "0.1.0"
-description = "AI-powered schema mapping agent for demand forecasting data standardization"
+description = "AI-powered agent for end-to-end demand forecasting"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "MIT"
 authors = [
     {name = "Katherine Gong"},
     {name = "Ayda Elzohbi"},
@@ -74,17 +74,17 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/schema-mapping-agent"
-Documentation = "https://schema-mapping-agent.readthedocs.io/"
-Repository = "https://github.com/your-org/schema-mapping-agent.git"
-Issues = "https://github.com/your-org/schema-mapping-agent/issues"
-Changelog = "https://github.com/your-org/schema-mapping-agent/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/your-org/ai_forecasting_agents"
+Documentation = "https://ai_forecasting_agents.readthedocs.io/"
+Repository = "https://github.com/your-org/ai_forecasting_agents.git"
+Issues = "https://github.com/your-org/ai_forecasting_agents/issues"
+Changelog = "https://github.com/your-org/ai_forecasting_agents/blob/main/CHANGELOG.md"
 
 [project.scripts]
-schema-mapper = "src.schema_mapping.cli:main"
+schema-mapper = "src.ai_forecasting_agents.schema_mapping.run_workflow:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/schema_mapping"]
+packages = ["src/ai_forecasting_agents"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
