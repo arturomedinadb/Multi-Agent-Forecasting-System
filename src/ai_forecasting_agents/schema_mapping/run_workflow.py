@@ -8,7 +8,7 @@ load_dotenv()
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.agents.definitions import (
+from .agents.definitions import (
     data_prep_agent,
     column_mapping_agent,
     data_integration_agent,
@@ -16,7 +16,7 @@ from src.agents.definitions import (
     # orchestrator_agent,  # Commented out for direct chain approach
 )
 from agents import Runner
-from src.schemas.models import DemandForecastingRecord
+from .schemas.models import DemandForecastingRecord
 
 # === Direct Chain Workflow ===
 
