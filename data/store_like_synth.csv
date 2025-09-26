@@ -1,0 +1,101 @@
+store_label,location_region,city_name,store_format,floor_area,opening_date
+S001,New Brunswick,Vancouver,Compact,6892,2021-03-28
+S002,PEI,Halifax,Mall,7278,2015-07-20
+S003,New Brunswick,Montreal,Superstore,8215,2016-05-17
+S004,Nova Scotia,Quebec City,Outlet,3731,2020-03-10
+S005,Saskatchewan,Vancouver,Superstore,9110,2019-01-25
+S006,British Columbia,Toronto,Outlet,8385,2016-05-17
+S007,Nova Scotia,Halifax,Express,8721,2019-01-24
+S008,British Columbia,Winnipeg,Superstore,9755,2017-10-17
+S009,Alberta,Edmonton,Outlet,2678,2016-06-24
+S010,Alberta,Winnipeg,Compact,4157,2019-12-25
+S011,Quebec,Victoria,Outlet,3693,2017-03-06
+S012,Alberta,Victoria,Mall,6592,2021-02-15
+S013,Ontario,Toronto,Superstore,2306,2017-08-30
+S014,Newfoundland,Vancouver,Flagship,6575,2018-12-05
+S015,Newfoundland,Edmonton,Superstore,1663,2020-06-21
+S016,Saskatchewan,Quebec City,Superstore,4763,2018-02-10
+S017,Ontario,Victoria,Mall,2291,2019-06-25
+S018,Ontario,Quebec City,Superstore,1698,2020-11-30
+S019,Quebec,Montreal,Mall,1854,2019-10-26
+S020,Ontario,Toronto,Compact,6249,2017-12-12
+S021,PEI,Ottawa,Mall,4510,2015-07-22
+S022,New Brunswick,Toronto,Flagship,3327,2015-07-17
+S023,Saskatchewan,Toronto,Superstore,5282,2021-11-16
+S024,British Columbia,Calgary,Mall,8098,2020-05-09
+S025,British Columbia,Victoria,Compact,9338,2019-10-01
+S026,Alberta,Halifax,Superstore,2959,2019-07-22
+S027,Nova Scotia,Montreal,Superstore,2802,2021-11-25
+S028,Quebec,Winnipeg,Flagship,1262,2019-11-23
+S029,PEI,Halifax,Mall,3049,2018-08-20
+S030,Manitoba,Edmonton,Compact,8158,2020-08-18
+S031,Newfoundland,Vancouver,Compact,3255,2018-02-28
+S032,Alberta,Quebec City,Flagship,2648,2018-12-14
+S033,Saskatchewan,Quebec City,Mall,9445,2019-02-05
+S034,British Columbia,Halifax,Outlet,3961,2020-04-03
+S035,Quebec,Montreal,Flagship,1956,2019-09-01
+S036,Alberta,Toronto,Mall,7944,2016-02-02
+S037,Manitoba,Calgary,Compact,5496,2016-10-01
+S038,Ontario,Vancouver,Flagship,4446,2017-11-11
+S039,Saskatchewan,Ottawa,Outlet,9754,2021-10-21
+S040,New Brunswick,Montreal,Outlet,5893,2021-05-20
+S041,Ontario,Edmonton,Mall,8996,2017-03-26
+S042,British Columbia,Calgary,Compact,8679,2015-01-17
+S043,Manitoba,Ottawa,Compact,2060,2021-05-16
+S044,Ontario,Edmonton,Compact,1699,2017-09-19
+S045,Alberta,Edmonton,Superstore,4327,2015-05-08
+S046,Quebec,Halifax,Express,6854,2016-07-23
+S047,British Columbia,Quebec City,Flagship,4863,2016-09-17
+S048,Saskatchewan,Winnipeg,Express,8806,2015-06-04
+S049,PEI,Montreal,Express,1784,2015-09-03
+S050,Nova Scotia,Victoria,Express,6986,2020-01-16
+S051,Newfoundland,Quebec City,Outlet,7971,2019-03-10
+S052,Nova Scotia,Halifax,Mall,5780,2015-01-20
+S053,Ontario,Quebec City,Flagship,5495,2017-08-29
+S054,British Columbia,Winnipeg,Mall,6919,2020-06-05
+S055,Saskatchewan,Vancouver,Superstore,4769,2016-07-28
+S056,Saskatchewan,Victoria,Express,8509,2021-06-10
+S057,Alberta,Victoria,Flagship,4854,2017-12-13
+S058,Manitoba,Toronto,Outlet,6691,2015-01-05
+S059,Nova Scotia,Calgary,Flagship,1876,2017-09-18
+S060,Alberta,Vancouver,Mall,7799,2015-09-26
+S061,Quebec,Victoria,Flagship,5752,2015-04-30
+S062,British Columbia,Victoria,Express,9932,2015-04-27
+S063,Nova Scotia,Halifax,Mall,2664,2017-12-17
+S064,PEI,Toronto,Express,8805,2018-02-15
+S065,Newfoundland,Quebec City,Outlet,4343,2018-04-27
+S066,Nova Scotia,Edmonton,Flagship,8004,2021-04-13
+S067,British Columbia,Victoria,Compact,8253,2018-05-28
+S068,Manitoba,Toronto,Flagship,7617,2021-10-15
+S069,Manitoba,Winnipeg,Mall,8421,2019-10-24
+S070,Manitoba,Winnipeg,Express,7665,2019-11-17
+S071,Manitoba,Calgary,Express,8390,2021-10-25
+S072,Ontario,Quebec City,Outlet,5611,2015-12-02
+S073,Nova Scotia,Montreal,Superstore,7303,2017-05-01
+S074,New Brunswick,Montreal,Compact,3427,2019-04-18
+S075,Ontario,Vancouver,Compact,6732,2018-07-15
+S076,British Columbia,Toronto,Superstore,4913,2017-12-02
+S077,Quebec,Vancouver,Express,3082,2015-03-31
+S078,New Brunswick,Victoria,Express,1417,2015-04-25
+S079,Newfoundland,Winnipeg,Mall,1825,2019-07-08
+S080,New Brunswick,Calgary,Superstore,8164,2016-11-06
+S081,PEI,Edmonton,Superstore,3967,2021-02-17
+S082,British Columbia,Toronto,Compact,5079,2019-04-21
+S083,Quebec,Toronto,Flagship,4440,2019-03-29
+S084,Nova Scotia,Halifax,Compact,5968,2019-12-27
+S085,Ontario,Toronto,Flagship,9787,2020-03-18
+S086,Newfoundland,Ottawa,Outlet,1698,2021-02-02
+S087,Alberta,Halifax,Compact,5171,2015-09-22
+S088,Nova Scotia,Calgary,Compact,6486,2015-05-24
+S089,Manitoba,Edmonton,Compact,5491,2019-02-01
+S090,Alberta,Edmonton,Superstore,2062,2020-11-26
+S091,Manitoba,Victoria,Express,7541,2016-09-25
+S092,Manitoba,Vancouver,Outlet,5330,2017-01-20
+S093,Newfoundland,Victoria,Express,3539,2019-03-23
+S094,New Brunswick,Victoria,Superstore,7938,2018-05-02
+S095,Manitoba,Edmonton,Flagship,2365,2016-05-14
+S096,Ontario,Winnipeg,Superstore,2324,2018-03-01
+S097,Alberta,Ottawa,Mall,4486,2019-12-16
+S098,Saskatchewan,Winnipeg,Compact,9905,2020-02-25
+S099,British Columbia,Winnipeg,Flagship,5268,2016-10-14
+S100,Quebec,Victoria,Mall,7619,2016-03-31

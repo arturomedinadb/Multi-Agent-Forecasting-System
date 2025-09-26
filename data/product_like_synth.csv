@@ -1,0 +1,31 @@
+prod_code,item_category,item_subcategory,item_weight,launch_date
+P0001,Electronics,Phone,39.85,2022-11-10
+P0002,Electronics,Laptop,22.35,2020-11-26
+P0003,Electronics,Tablet,43.32,2022-05-21
+P0004,Clothing,Shirt,32.58,2022-02-08
+P0005,Clothing,Pants,41.64,2022-03-16
+P0006,Clothing,Dress,9.17,2020-10-03
+P0007,Furniture,Chair,15.28,2020-01-22
+P0008,Furniture,Table,21.65,2021-04-19
+P0009,Furniture,Sofa,20.05,2021-11-30
+P0010,Toys,Action Figure,11.72,2022-08-15
+P0011,Toys,Board Game,30.96,2022-04-11
+P0012,Toys,Puzzle,2.42,2021-10-08
+P0013,Groceries,Cereal,22.58,2021-01-22
+P0014,Groceries,Milk,48.29,2020-08-29
+P0015,Groceries,Bread,15.3,2021-07-18
+P0016,Sports,Basketball,34.24,2022-08-13
+P0017,Sports,Soccer Ball,30.54,2022-02-14
+P0018,Sports,Tennis Racket,8.75,2022-10-22
+P0019,Books,Fiction,26.05,2021-12-03
+P0020,Books,Non-Fiction,38.78,2020-06-10
+P0021,Books,Textbook,44.75,2020-09-26
+P0022,Home,Vacuum,46.1,2021-03-31
+P0023,Home,Blender,9.88,2022-10-13
+P0024,Home,Microwave,16.33,2021-12-20
+P0025,Beauty,Lipstick,13.64,2022-12-12
+P0026,Beauty,Foundation,17.9,2022-02-02
+P0027,Beauty,Shampoo,27.18,2022-11-30
+P0028,Health,Vitamins,40.13,2020-03-05
+P0029,Health,Pain Relief,49.35,2021-10-09
+P0030,Health,First Aid,0.8,2021-08-15
