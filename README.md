@@ -8,48 +8,45 @@ A multi-agent AI system for automated data schema mapping and demand forecasting
 **Instructor**: Fatih Nayebi  
 **Team**: Ayda Elzohbi, Arturo Medina, Arial Huang, Katherine Gong
 
-### Current System Status (v0.1.0)
+### Current System Status (v0.2.0)
 
-**System Type**: Single-agent schema mapping system  
-**Architecture**: Monolithic agent with LLM-powered mapping  
+**System Type**: Multi-agent schema mapping orchestration  
+**Architecture**: Specialized agent clusters with intelligent orchestration  
 **Datasets Supported**: 5 retail data sources (transactions, products, stores, holidays, promotions)  
-**Target Schema**: 35+ demand forecasting fields  
+**Target Schema**: 36 demand forecasting fields  
+**Integration**: Successfully merges and maps data from all source datasets  
 
-### Key Capabilities
+## Current Architecture (v0.2.0) - Multi-Agent System
 
-- **Intelligent Schema Mapping**: LLM-powered semantic column understanding
-- **Multi-Dataset Integration**: Unified mapping across 5+ heterogeneous datasets
-- **Robust Validation**: Pydantic-based schema validation with transformation
-- **Agent Framework**: Built on openai-agents with function tools
-- **Production Pipeline**: End-to-end data processing with comprehensive error handling
-
-## Current Architecture (v0.1.0)
-
-### Single-Agent System
+### Implemented Multi-Agent Orchestration
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Multiple CSV  │───▶│  Schema Mapping  │───▶│  Unified Schema │
-│   Datasets      │    │     Agent        │    │  Output (CSV)   │
-│   (5 sources)   │    │   (Monolithic)   │    │  35+ Fields     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │   LLM-Powered    │
-                    │   Column         │
-                    │   Analysis       │
-                    └──────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    SCHEMA ORCHESTRATOR                          │
+│              (Workflow Coordination & Performance)              │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+    ┌─────────────────┼─────────────────┬─────────────────────────┐
+    │                 │                 │                         │
+    ▼                 ▼                 ▼                         ▼
+┌─────────┐    ┌─────────────┐   ┌──────────────┐    ┌─────────────────┐
+│  DATA   │    │   SCHEMA    │   │ VALIDATION   │    │   UNIFIED       │
+│  PREP   │───▶│   MAPPING   │──▶│   AGENT      │───▶│   OUTPUT        │
+│ AGENT   │    │    AGENT    │   │              │    │ (36 fields)     │
+└─────────┘    └─────────────┘   └──────────────┘    └─────────────────┘
+
 ```
 
-### Current Components
-- **SchemaMappingAgent**: Monolithic agent handling all tasks
-- **Function Tools**: CSV loading, pattern analysis, validation, confidence scoring
-- **Target Schema**: 35 fields covering sales, products, stores, promotions, economics
-- **Data Sources**: Transactions, products, stores, holidays, promotions
+### Current Components (Implemented)
+- **SchemaOrchestrator**: Multi-agent workflow coordination and performance monitoring
+- **DataPrepAgent**: Dataset preparation, analysis, and quality scoring
+- **SchemaMappingAgent**: AI-powered semantic column mapping with confidence scoring  
+- **ValidationAgentFixed**: Advanced validation with proper dataset merging and record creation
+- **Intelligent Merging**: Proper join key identification (prod_code, store_label, date)
+- **Target Schema**: 36 fields covering all retail forecasting dimensions
 
-## Target Architecture (v0.2.0) - Specialized Data Mapping System
+## Future Architecture (v0.3.0) - Advanced Specialized System
 
-### Multi-Agent Data Mapping Orchestration
+### Planned Multi-Agent Data Mapping Orchestration
 ```
                             ┌─────────────────────────────────┐
                             │       ORCHESTRATOR AGENT       │
@@ -109,31 +106,42 @@ A multi-agent AI system for automated data schema mapping and demand forecasting
 
 ## Directory Structure
 
-### Current Structure (v0.1.0)
+### Current Structure (v0.2.0)
 ```
 ├── src/
 │   ├── schema_mapping/          # Core schema mapping module
-│   │   ├── __init__.py
-│   │   ├── schemas.py           # Pydantic data models (99 lines)
-│   │   └── schema_mapping_agent.py  # Monolithic agent (695 lines)
+│   │   ├── __init__.py          # Multi-agent system exports
+│   │   ├── schemas.py           # Pydantic data models (unified schema)
+│   │   ├── schema_mapping_agent.py  # Legacy monolithic agent
+│   │   └── agents/              # Multi-agent system
+│   │       ├── __init__.py      # Agent exports
+│   │       ├── base_agent.py    # Common agent functionality
+│   │       ├── orchestrator.py  # Multi-agent coordinator
+│   │       ├── data_prep_agent.py       # Data preparation
+│   │       ├── schema_mapping_agent.py  # Intelligent mapping
+│   │       ├── validation_agent.py      # Original validation
+│   │       └── validation_agent_fixed.py # Fixed merging logic
 │   └── __init__.py
 ├── tests/                       # Test suite
 │   ├── __init__.py
 │   └── test_agent.py           # Unit and integration tests
-├── data/                        # Sample datasets
+├── data/                        # Sample datasets (5 sources)
 │   ├── transaction_like_synth.csv    # Main transaction data
 │   ├── product_like_synth_wBrand.csv # Product master data
 │   ├── store_like_synth.csv          # Store information
 │   ├── holidays.csv                  # Holiday calendar
 │   └── promotion_like_synth.csv      # Promotion data
-├── docs/                        # Documentation
-│   ├── notebooks/               # Jupyter notebooks
-│   └── documentation/           # API documentation
+├── output/                      # Generated outputs
+│   └── unified_mapped_data.csv  # Multi-agent mapping results
 ├── examples/                    # Usage examples
-│   ├── run_agent.py            # Main example script
-│   └── test_unified_mapping.py # Testing utilities
+│   ├── run_agent.py            # Legacy single-agent example
+│   ├── run_multi_agent.py      # Multi-agent orchestration
+│   ├── test_multi_agent.py     # Quick testing with sample data
+│   └── test_unified_mapping.py # Legacy testing utilities
+├── docs/                        # Documentation
+│   ├── notebooks/               # Analysis notebooks
+│   └── documentation/           # API and schema documentation
 ├── scripts/                     # Utility scripts
-│   └── run_with_uv.sh          # UV-based runner
 ├── config/                      # Configuration files
 ├── pyproject.toml              # Project dependencies and metadata
 └── README.md                   # This file
@@ -141,53 +149,90 @@ A multi-agent AI system for automated data schema mapping and demand forecasting
 
 ## Usage
 
-### Basic Usage
+### Multi-Agent System (Current - v0.2.0)
 
 ```python
-from src.schema_mapping import SchemaMappingAgent
+from schema_mapping.agents import SchemaOrchestrator
 
-# Initialize agent
-agent = SchemaMappingAgent()
+# Initialize multi-agent orchestrator
+orchestrator = SchemaOrchestrator()
+
+# Check system health
+health = await orchestrator.health_check()
+print(f"System health: {health['overall_healthy']}")
+
+# Run complete workflow on multiple datasets
+result = await orchestrator.orchestrate_mapping(
+    dataset_paths=[
+        "data/transaction_like_synth.csv",
+        "data/product_like_synth_wBrand.csv", 
+        "data/store_like_synth.csv",
+        "data/holidays.csv",
+        "data/promotion_like_synth.csv"
+    ],
+    output_path="output/unified_mapped_data.csv"
+)
+
+# Access comprehensive results
+summary = result["workflow_summary"]
+print(f"Quality Grade: {summary['quality_grade']}")
+print(f"Total Mappings: {summary['total_mappings']}")
+print(f"Confidence: {summary['average_confidence']:.1%}")
+print(f"Success Rate: {summary['validation_success_rate']:.1%}")
+```
+
+### Legacy Single-Agent System (v0.1.0)
+
+```python
+from schema_mapping import LegacySchemaMappingAgent
+
+# Initialize legacy agent
+agent = LegacySchemaMappingAgent()
 
 # Map single dataset
 result = await agent.map_dataset("data/product_like_synth.csv")
-
-# Map multiple datasets
-result = await agent.map_dataset(
-    "data/product_like_synth.csv", 
-    "data/store_like_synth.csv"
-)
-
-# Access results
-print(f"Mapping confidence: {result.mapping_confidence:.2%}")
-print(f"Successfully mapped: {result.successful_records}/{result.total_records}")
 ```
 
 ### Command Line Usage
 
 ```bash
-# Run with AI-powered mapping
+# Run multi-agent system (recommended)
+python examples/run_multi_agent.py
+
+# Quick testing with sample data
+python examples/test_multi_agent.py
+
+# Legacy single-agent system
 python examples/run_agent.py
-
-# Run basic functionality test
-python examples/test_unified_mapping.py
-
-# Run with UV (handles environment issues)
-./scripts/run_with_uv.sh
 ```
 
-### Expected Output
+### Expected Output (Multi-Agent)
 
 ```
-Schema Mapping Agent initialized
-Target schema loaded with 18 fields
-Processing multiple files: product_like_synth.csv, store_like_synth.csv
+[INFO] Initializing orchestrator...
+[SUCCESS] All agents healthy
 
-Mapping Results:
-   Total records: 30
-   Successful: 28
-   Confidence: 87%
-   Unmapped columns: ['item_weight']
+[INFO] Running multi-agent workflow...
 
-Results saved to: ai_mapped_output.csv
+--- Phase 1: Data Preparation ---
+[DataPrepAgent] Processing 5 dataset(s)
+[Orchestrator] Phase 1 completed in 0.03s
+
+--- Phase 2: Schema Mapping ---
+[SchemaMappingAgent] Created 36 mappings - 70.4% avg confidence
+[Orchestrator] Phase 2 completed in 62.2s
+
+--- Phase 3: Validation & Quality Assessment ---
+[ValidationAgentFixed] Final merged dataset: (8, 46)
+[ValidationAgentFixed] Created 3 complete records - 37.5% success rate
+[Orchestrator] Phase 3 completed in 0.04s
+
+[SUCCESS] WORKFLOW COMPLETED
+   Duration: 62.3 seconds
+   Quality Grade: B
+   Total Mappings: 36
+   Field Coverage: 30.6% (11/36 columns populated)
+   Key Fields: date, product_id, store_id, unit_price, units_sold, category, store_city
+
+Results saved to: output/unified_mapped_data.csv
 ```
