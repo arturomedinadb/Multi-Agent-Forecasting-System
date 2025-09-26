@@ -1,0 +1,21 @@
+date,year,month,day_of_week,is_weekend,holiday_name,holiday_type,is_public_holiday,region,is_national,holiday_effect_type,days_from_previous_holiday,days_to_next_holiday,long_weekend_flag,holiday_length_days,season,quarter
+01/01/2022,2022,1,Saturday,1,New Year's Day,Federal / National,1,ALL,1,fixed-date,,104,0,1,Winter,Q1
+15/04/2022,2022,4,Friday,0,Good Friday,Religious / Federal,1,ALL,1,floating,104,38,1,1,Spring,Q2
+23/05/2022,2022,5,Monday,0,Victoria Day,Federal / National,1,ALL,1,floating,38,39,1,1,Spring,Q2
+01/07/2022,2022,7,Friday,0,Canada Day,Federal / National,1,ALL,1,fixed-date,39,66,1,1,Summer,Q3
+05/09/2022,2022,9,Monday,0,Labour Day,Federal / National,1,ALL,1,floating,66,25,1,1,Fall,Q3
+30/09/2022,2022,9,Friday,0,National Day for Truth and Reconciliation,Federal,1,Some Provinces,0,fixed-date,25,10,1,1,Fall,Q3
+10/10/2022,2022,10,Monday,0,Thanksgiving Day,Federal / National,1,ALL,1,floating,10,32,1,1,Fall,Q4
+11/11/2022,2022,11,Friday,0,Remembrance Day,Federal / National,1,Some Provinces,0,fixed-date,32,44,1,1,Fall,Q4
+25/12/2022,2022,12,Sunday,1,Christmas Day,Federal / National,1,ALL,1,fixed-date,44,1,0,1,Winter,Q4
+26/12/2022,2022,12,Monday,0,Boxing Day,Federal / Observance,1,Some Provinces,0,fixed-date,1,6,1,1,Winter,Q4
+01/01/2023,2023,1,Sunday,1,New Year's Day,Federal / National,1,ALL,1,fixed-date,6,96,0,1,Winter,Q1
+07/04/2023,2023,4,Friday,0,Good Friday,Religious / Federal,1,ALL,1,floating,96,45,1,1,Spring,Q2
+22/05/2023,2023,5,Monday,0,Victoria Day,Federal / National,1,ALL,1,floating,45,40,1,1,Spring,Q2
+01/07/2023,2023,7,Saturday,1,Canada Day,Federal / National,1,ALL,1,fixed-date,40,65,0,1,Summer,Q3
+04/09/2023,2023,9,Monday,0,Labour Day,Federal / National,1,ALL,1,floating,65,26,1,1,Fall,Q3
+30/09/2023,2023,9,Saturday,1,National Day for Truth and Reconciliation,Federal,1,Some Provinces,0,fixed-date,26,9,0,1,Fall,Q3
+09/10/2023,2023,10,Monday,0,Thanksgiving Day,Federal / National,1,ALL,1,floating,9,33,1,1,Fall,Q4
+11/11/2023,2023,11,Saturday,1,Remembrance Day,Federal / National,1,Some Provinces,0,fixed-date,33,44,0,1,Fall,Q4
+25/12/2023,2023,12,Monday,0,Christmas Day,Federal / National,1,ALL,1,fixed-date,44,1,1,1,Winter,Q4
+26/12/2023,2023,12,Tuesday,0,Boxing Day,Federal / Observance,1,Some Provinces,0,fixed-date,1,,0,1,Winter,Q4
