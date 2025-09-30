@@ -1,6 +1,10 @@
 from agents import Agent, Runner, handoff, HandoffInputData
+import ast
 import json
 import re
+from pathlib import Path
+
+import pandas as pd
 
 from ..schemas.models import DemandForecastingRecord
 from ..tools.functions import (
@@ -8,71 +12,33 @@ from ..tools.functions import (
     generate_mapped_csvs,
     merge_mapped_csvs_to_target,
     evaluate_mapping_quality,
+    run_generate_mapped_csvs,
 )
 
-# Handoff descriptions will be set after all agents are defined
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+DEFAULT_MAPPED_DIR = PROJECT_ROOT / "output" / "mapped"
+DEFAULT_FINAL_OUTPUT = PROJECT_ROOT / "output" / "final_mapped_dataset.csv"
 
-# # === ORCHESTRATOR COMMENTED OUT FOR SIMPLIFICATION ===
-# # Using direct chain approach instead: DataPrepAgent → SchemaMappingAgent → ValidationAgent → QualityAssessorAgent
 
-#     WORKFLOW ARCHITECTURE: Hub-and-Spoke Pattern
-#     You maintain central control while each specialist agent returns to you for next-step determination.
-    
-#     WORKFLOW STAGES & ROUTING LOGIC:
-    
-#     1. INITIALIZATION STAGE:
-#        - When receiving initial user request with source files and target schema
-#        - Extract source file paths from user request
-#        → ROUTE TO: DataPrepAgent
-    
-#     2. AFTER DATA PREPARATION:
-#        - When receiving compiled dataset metadata (JSON array with file_path, columns, column_descriptions)
-#        - Verify all source files have been analyzed
-#        → ROUTE TO: SchemaMappingAgent (with metadata + target schema)
-    
-#     3. AFTER SCHEMA MAPPING:
-#        - When receiving column mappings (JSON with "mappings" array containing confidence scores)
-#        - Verify mappings have been created with reasonable confidence
-#        → ROUTE TO: ValidationAgent (with mappings + metadata + output path)
-    
-#     4. AFTER VALIDATION:
-#        - When receiving validation results (confirmation of file creation + metrics)
-#        - Verify output file was successfully created
-#        → ROUTE TO: QualityAssessorAgent (with mappings + metadata for final assessment)
-    
-#     5. AFTER QUALITY ASSESSMENT:
-#        - When receiving final quality report
-#        - WORKFLOW COMPLETE: Provide comprehensive summary
-    
-#     INTELLIGENT ROUTING PROTOCOL:
-#     - Analyze previous agent's output to determine current workflow stage
-#     - Never restart or repeat completed stages
-#     - Always progress forward through the workflow
-#     - Ensure each handoff includes the precise context needed by the target agent
-#     - Monitor for errors and handle gracefully
-    
-#     STATE DETERMINATION KEYWORDS:
-#     - Data Prep Complete: Look for JSON array with "file_path", "columns", "column_descriptions"
-#     - Mapping Complete: Look for JSON with "mappings" array
-#     - Validation Complete: Look for "status": "Success" or file confirmation
-#     - Quality Complete: Look for quality metrics and confidence scores
-    
-#     FINAL SUMMARY REQUIREMENTS:
-#     When workflow is complete, provide:
-#     - Confirmation of output file creation and location
-#     - Key quality metrics (confidence scores, semantic similarity)
-#     - Workflow performance summary
-#     - Overall success status and recommendations
-    
-#     CRITICAL: Never call the same agent twice. Always progress forward based on completed work.
-#     """,
-#     handoffs=[
-#         handoff(data_prep_agent),
-#         handoff(schema_mapping_agent, input_filter=schema_mapping_handoff_filter),
-#         handoff(validation_agent, input_filter=validation_handoff_filter),
-#         handoff(quality_assessor_agent, input_filter=quality_assessment_handoff_filter)
-#     ]
-# )
+def _message_to_text(raw_content: object) -> str:
+    """Normalize SDK message content structures into plain text."""
+    if raw_content is None:
+        return ""
+    if isinstance(raw_content, str):
+        return raw_content
+    if isinstance(raw_content, (list, tuple)):
+        parts: list[str] = []
+        for item in raw_content:
+            if isinstance(item, dict):
+                text_val = item.get("text")
+                if text_val is not None:
+                    parts.append(str(text_val))
+                else:
+                    parts.append(str(item))
+            else:
+                parts.append(str(item))
+        return "\n".join(parts)
+    return str(raw_content)
 
 # === Message Filters for Agent Handoffs ===
 
@@ -89,7 +55,8 @@ def schema_mapping_handoff_filter(handoff_message_data: HandoffInputData) -> Han
     target_schema = None
 
     for message in reversed(messages):
-        content = getattr(message, 'content', '') if hasattr(message, 'content') else str(message.get('content', ''))
+        raw_content = getattr(message, 'content', None) if hasattr(message, 'content') else message.get('content')
+        content = _message_to_text(raw_content)
         if (content.strip().startswith('[') and 'file_path' in content and 'columns' in content) and dataset_metadata is None:
             dataset_metadata = content
         if 'Target Schema:' in content and target_schema is None:
@@ -117,7 +84,7 @@ def schema_mapping_handoff_filter(handoff_message_data: HandoffInputData) -> Han
        - source_metadata_json: the JSON array above
        - mappings_json: your mapping plan JSON
        - output_dir: output/mapped/
-    3) Return both your mapping plan and the tool's JSON output, then end with: "Column mapping complete - mapped CSVs generated".
+    3) Saved the csv files using the tool, return both your mapping plan and the tool's JSON output, then end with: "Column mapping complete - mapped CSVs generated".
     """
 
     return HandoffInputData(
@@ -138,6 +105,9 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
     mapped_outputs = None
     target_schema = None
     output_path = None
+    dataset_metadata_json = None
+    mapping_plan_json = None
+    source_file_list: list[str] | None = None
 
     def clean_json_blocks(text: str) -> list[str]:
         candidates: list[str] = []
@@ -162,7 +132,8 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
         return cleaned
 
     for message in reversed(messages):
-        content = getattr(message, 'content', '') if hasattr(message, 'content') else str(message.get('content', ''))
+        raw_content = getattr(message, 'content', None) if hasattr(message, 'content') else message.get('content')
+        content = _message_to_text(raw_content)
 
         if '"outputs"' in content and mapped_outputs is None:
             for block in clean_json_blocks(content):
@@ -176,6 +147,46 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
                         break
                 except json.JSONDecodeError:
                     continue
+
+        if source_file_list is None and 'Source Data Files:' in content:
+            try:
+                start = content.index('Source Data Files:')
+                after = content[start:].split('\n', 1)[0]
+                list_start = after.find('[')
+                list_end = after.rfind(']') + 1
+                if list_start != -1 and list_end > list_start:
+                    list_str = after[list_start:list_end]
+                    parsed_list = ast.literal_eval(list_str)
+                    if isinstance(parsed_list, list):
+                        source_file_list = [str(Path(p).expanduser().resolve()) for p in parsed_list]
+                        print("Captured source file list from prompt")
+            except (ValueError, SyntaxError):
+                pass
+
+        if dataset_metadata_json is None and 'file_path' in content and '[' in content:
+            start = content.find('[')
+            end = content.rfind(']') + 1
+            if start != -1 and end > start:
+                snippet = content[start:end]
+                try:
+                    json.loads(snippet)
+                    dataset_metadata_json = snippet
+                    print("Captured dataset metadata for integration fallback")
+                except json.JSONDecodeError:
+                    pass
+
+        if mapping_plan_json is None and '"mappings"' in content:
+            for block in clean_json_blocks(content):
+                if '"mappings"' not in block:
+                    continue
+                try:
+                    parsed = json.loads(block)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict) and 'mappings' in parsed:
+                    mapping_plan_json = json.dumps(parsed)
+                    print("Captured mapping plan JSON for integration fallback")
+                    break
 
         if 'Target Schema:' in content and target_schema is None:
             schema_start = content.find('{')
@@ -195,8 +206,60 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
                     output_path = token.strip('"`')
                     break
 
+    if mapped_outputs is None and dataset_metadata_json and mapping_plan_json:
+        print("Mapped outputs missing; generating via run_generate_mapped_csvs")
+        manifest = run_generate_mapped_csvs(
+            dataset_metadata_json,
+            mapping_plan_json,
+            str(DEFAULT_MAPPED_DIR),
+        )
+        manifest_str = manifest if isinstance(manifest, str) else json.dumps(manifest)
+        try:
+            manifest_json = json.loads(manifest_str)
+        except json.JSONDecodeError:
+            manifest_json = {}
+        if manifest_json.get('outputs'):
+            mapped_outputs = manifest_str
+        else:
+            print("Fallback mapping generation produced no outputs")
+
+    if mapped_outputs is None and mapping_plan_json and source_file_list:
+        print("Building dataset metadata from source file list for fallback mapping")
+        metadata_records: list[dict[str, object]] = []
+        for path_str in source_file_list:
+            try:
+                df = pd.read_csv(path_str, nrows=5)
+            except Exception as err:
+                print(f"Failed to rebuild metadata for {path_str}: {err}")
+                continue
+
+            metadata_records.append({
+                "file_path": path_str,
+                "shape": list(df.shape),
+                "columns": df.columns.tolist(),
+                "dtypes": df.dtypes.astype(str).to_dict(),
+                "sample": df.head(3).to_dict(orient="records"),
+            })
+
+        if metadata_records:
+            dataset_metadata_json = json.dumps(metadata_records)
+            manifest = run_generate_mapped_csvs(
+                dataset_metadata_json,
+                mapping_plan_json,
+                str(DEFAULT_MAPPED_DIR),
+            )
+            manifest_str = manifest if isinstance(manifest, str) else json.dumps(manifest)
+            try:
+                manifest_json = json.loads(manifest_str)
+            except json.JSONDecodeError:
+                manifest_json = {}
+            if manifest_json.get('outputs'):
+                mapped_outputs = manifest_str
+            else:
+                print("Generated manifest still empty after metadata rebuild")
+
     if output_path is None:
-        output_path = "output/final_mapped_dataset.csv"
+        output_path = str(DEFAULT_FINAL_OUTPUT)
         print(f"Using default integration output path: {output_path}")
 
     if mapped_outputs is None:
@@ -229,6 +292,7 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
         pre_handoff_items=tuple(),
         new_items=tuple()
     )
+
 
 # def quality_assessment_handoff_filter(handoff_message_data: HandoffInputData) -> HandoffInputData:
 #     """
@@ -361,7 +425,7 @@ column_mapping_agent = Agent(
     instructions="""
     You are an expert column mapping agent specializing in retail/demand forecasting data transformation.
     
-    MISSION: Create high-confidence column mapping plans between analyzed source datasets and target demand forecasting schema, and generate per-dataset mapped CSVs (top 5 rows) ready for integration.
+    MISSION: Create high-confidence column mapping plans between analyzed source datasets and target demand forecasting schema, and generate per-dataset mapped CSVs ready for integration.
     
     EXECUTION PROTOCOL:
     1. Extract dataset metadata and the target schema from the previous step.
@@ -372,7 +436,7 @@ column_mapping_agent = Agent(
     
     CRITICAL:
     - You must author the mapping plan JSON directly in your response.
-    - Then execute `generate_mapped_csvs` with the source metadata and your mapping plan, saving to output/mapped/.
+    - Then you must execute `generate_mapped_csvs` with the source metadata and your mapping plan, saving to output/mapped/.
     
     MAPPING STRATEGY:
     - Prioritize semantic meaning over syntactic similarity
@@ -380,12 +444,31 @@ column_mapping_agent = Agent(
     - Apply confidence thresholds (only mappings > 0.5 confidence); if not confident, skip the mapping for the column
     
     OUTPUT SPECIFICATION:
-    - Provide your JSON mapping plan in the response
-    - Provide JSON from `generate_mapped_csvs` listing output file paths and columns
-    - End with: "Column mapping complete - mapped CSVs generated"
+    After generating the csv mapped datasets, your response MUST be structured using markdown as follows:
     
-    Expected response format:
+    ### Mapping Plan
+    ```json
+    {
+      "mappings": [
+        {"source_column": "...", "target_column": "...", "confidence": 0.9, "reasoning": "..."},
+        ...
+      ]
+    }
+    ```
+
+    ### Tool Output
+    ```json
+    {
+      "outputs": [
+        {"source_file": "...", "output_path": "...", "columns": [...]},
+        ...
+      ]
+    }
+    ```
+    
+    Finally, end your entire response with the phrase: "Column mapping complete - mapped CSVs generated"
     """,
+
     tools=[generate_mapped_csvs],
     handoffs=[handoff(data_integration_agent, input_filter=integration_handoff_filter)]
 )

@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Dict, Any, List
 
 import pandas as pd
@@ -26,7 +27,7 @@ def load_and_describe_dataset(file_path: str) -> str:
             "shape": list(df.shape),
             "columns": df.columns.tolist(),
             "dtypes": df.dtypes.astype(str).to_dict(),
-            "sample": df.head(3).to_dict(orient="records"),
+            "sample": df.head(2).to_dict(orient="records"),
         }
         return json.dumps(metadata)
     except Exception as e:
@@ -34,6 +35,108 @@ def load_and_describe_dataset(file_path: str) -> str:
         return json.dumps({"error": str(e), "file_path": file_path})
 
 # --- Schema Mapping Tool ---
+
+def run_generate_mapped_csvs(
+    source_metadata_json: str,
+    mappings_json: str,
+    output_dir: str,
+) -> str:
+    """Shared implementation for generating mapped CSV manifests."""
+
+    def _normalize_path(value: str | None) -> str | None:
+        if not value:
+            return None
+        try:
+            return str(Path(value).expanduser().resolve())
+        except Exception:
+            return os.path.abspath(value)
+
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        source_meta = json.loads(source_metadata_json) or []
+        mapping_payload = json.loads(mappings_json) or {}
+    except Exception as e:
+        print(f"TOOL ERROR in generate_mapped_csvs: Invalid JSON input - {e}")
+        return json.dumps({"outputs": [], "error": f"Invalid JSON input: {e}"})
+
+    mapping_entries = mapping_payload.get("mappings", [])
+    per_file: Dict[str, List[Dict[str, Any]]] = {}
+    fallback: List[Dict[str, Any]] = []
+
+    for entry in mapping_entries:
+        if not isinstance(entry, dict):
+            continue
+        if "source_file" in entry:
+            normalized_key = _normalize_path(entry.get("source_file"))
+            if normalized_key:
+                mappings_for_file = entry.get("mappings", [])
+                if isinstance(mappings_for_file, list):
+                    filtered = [m for m in mappings_for_file if isinstance(m, dict)]
+                    per_file[normalized_key] = filtered
+                    per_file[Path(normalized_key).name] = filtered
+        elif entry.get("source_column") and entry.get("target_column"):
+            fallback.append(entry)
+
+    results: List[Dict[str, Any]] = []
+
+    for meta in source_meta:
+        path = meta.get("file_path")
+        if not path:
+            continue
+
+        normalized_meta_path = _normalize_path(path)
+        mapping_list = per_file.get(normalized_meta_path)
+
+        if mapping_list is None and normalized_meta_path is not None:
+            mapping_list = per_file.get(os.path.basename(normalized_meta_path))
+
+        if mapping_list is None:
+            mapping_list = fallback
+
+        if not mapping_list:
+            print(f"TOOL WARNING: No mappings matched for {path}; skipping file")
+            continue
+
+        try:
+            df = pd.read_csv(path, nrows=5)
+        except Exception as e:
+            print(f"TOOL ERROR: Unable to read '{path}': {e}")
+            continue
+
+        df = df.astype(object).where(pd.notnull(df), None)
+
+        mapped_df = pd.DataFrame()
+        used_targets: set[str] = set()
+
+        for m in mapping_list:
+            src = m.get("source_column")
+            tgt = m.get("target_column")
+            if not src or not tgt:
+                continue
+            if src not in df.columns:
+                continue
+            if tgt in used_targets:
+                continue
+            mapped_df[tgt] = df[src]
+            used_targets.add(tgt)
+
+        if mapped_df.empty:
+            print(f"TOOL WARNING: No valid columns mapped for {path}; skipping file")
+            continue
+
+        out_name = f"{Path(path).stem}_mapped.csv"
+        out_path = Path(output_dir) / out_name
+        mapped_df.to_csv(out_path, index=False)
+
+        results.append({
+            "source_file": path,
+            "output_path": str(out_path),
+            "columns": list(mapped_df.columns),
+        })
+
+    print(f"TOOL: Wrote {len(results)} mapped CSVs to {output_dir}")
+    return json.dumps({"outputs": results})
+
 
 @function_tool
 def generate_mapped_csvs(source_metadata_json: str, mappings_json: str, output_dir: str) -> str:
@@ -45,39 +148,7 @@ def generate_mapped_csvs(source_metadata_json: str, mappings_json: str, output_d
     """
     print("TOOL: Generating per-dataset mapped CSVs...")
     try:
-        os.makedirs(output_dir, exist_ok=True)
-        source_meta = json.loads(source_metadata_json)
-        mappings = json.loads(mappings_json).get("mappings", [])
-
-        # Group mappings by source_column; later filter per dataset by column presence
-        results: List[Dict[str, Any]] = []
-        for meta in source_meta:
-            path = meta.get("file_path")
-            if not path:
-                continue
-            df = pd.read_csv(path, nrows=5)
-            df = df.astype(object).where(pd.notnull(df), None)
-
-            mapped_df = pd.DataFrame()
-            used_targets = set()
-            for m in mappings:
-                src = m.get("source_column")
-                tgt = m.get("target_column")
-                if src in df.columns and tgt and tgt not in used_targets:
-                    mapped_df[tgt] = df[src]
-                    used_targets.add(tgt)
-
-            out_name = os.path.splitext(os.path.basename(path))[0] + "__mapped.csv"
-            out_path = os.path.join(output_dir, out_name)
-            mapped_df.to_csv(out_path, index=False)
-            results.append({
-                "source_file": path,
-                "output_path": out_path,
-                "columns": list(mapped_df.columns)
-            })
-
-        print(f"TOOL: Wrote {len(results)} mapped CSVs to {output_dir}")
-        return json.dumps({"outputs": results})
+        return run_generate_mapped_csvs(source_metadata_json, mappings_json, output_dir)
     except Exception as e:
         print(f"TOOL ERROR in generate_mapped_csvs: {e}")
         return json.dumps({"outputs": [], "error": str(e)})
