@@ -29,11 +29,12 @@ async def main():
 
     # Use all relevant datasets, excluding test samples and target benchmarks
     source_files = [
-        "data/transaction_like_synth.csv",
+        "data/transaction_like_synth (1).csv",
         "data/product_like_synth_wBrand.csv",
         "data/store_like_synth.csv",
         "data/holidays.csv",
-        "data/promotion_like_synth.csv"
+        "data/promotion_like_synth.csv",
+        "data/weather_monthly.csv"
     ]
 
     output_file = "data/final_mapped_demand_forecast_5_rows.csv"
