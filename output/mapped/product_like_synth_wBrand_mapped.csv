@@ -1,6 +1,11 @@
-product_id,category,subcategory,product_launch_date,unit_orig_price
-P0001,Electronics,Phone,2022-11-10,699.0
-P0002,Electronics,Laptop,2020-11-26,999.0
-P0003,Electronics,Tablet,2022-05-21,399.0
-P0004,Clothing,Shirt,2022-02-08,25.0
-P0005,Clothing,Pants,2022-03-16,40.0
+product_id,category,subcategory,product_launch_date,unit_orig_price,brand_name
+P0001,Electronics,Phone,2022-11-10,699.0,LG
+P0002,Electronics,Laptop,2020-11-26,999.0,LG
+P0003,Electronics,Tablet,2022-05-21,399.0,LG
+P0004,Clothing,Shirt,2022-02-08,25.0,Zara
+P0005,Clothing,Pants,2022-03-16,40.0,Zara
+P0006,Clothing,Dress,2020-10-03,60.0,Adidas
+P0007,Furniture,Chair,2020-01-22,85.0,IKEA
+P0008,Furniture,Table,2021-04-19,150.0,IKEA
+P0009,Furniture,Sofa,2021-11-30,800.0,Wayfair
+P0010,Toys,Action Figure,2022-08-15,20.0,Fisher-Price

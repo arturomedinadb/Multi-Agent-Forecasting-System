@@ -1,0 +1,5 @@
+# Keep human-readable summaries; ignore bulky judge logs
+*
+!.gitignore
+!*.json
+!*.md

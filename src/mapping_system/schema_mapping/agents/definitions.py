@@ -12,12 +12,14 @@ from ..tools.functions import (
     generate_mapped_csvs,
     merge_mapped_csvs_to_target,
     evaluate_mapping_quality,
+    evaluate_schema_mapping_with_deepeval,
     run_generate_mapped_csvs,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_MAPPED_DIR = PROJECT_ROOT / "output" / "mapped"
 DEFAULT_FINAL_OUTPUT = PROJECT_ROOT / "output" / "final_mapped_dataset.csv"
+DEFAULT_EVALUATION_CONFIG = PROJECT_ROOT / "configs" / "evaluation" / "schema_mapping.yaml"
 
 
 def _message_to_text(raw_content: object) -> str:
@@ -39,6 +41,25 @@ def _message_to_text(raw_content: object) -> str:
                 parts.append(str(item))
         return "\n".join(parts)
     return str(raw_content)
+
+
+def _extract_json_blocks(text: str) -> list[str]:
+    """Return cleaned JSON snippets (code fences allowed) from a message."""
+    block_pattern = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.IGNORECASE | re.DOTALL)
+    blocks = block_pattern.findall(text)
+    candidates = list(blocks)
+    candidates.append(text)
+
+    cleaned: list[str] = []
+    for candidate in candidates:
+        stripped_lines: list[str] = []
+        for line in candidate.splitlines():
+            striped = line.strip()
+            if striped.startswith("//") or striped.startswith("#"):
+                continue
+            stripped_lines.append(line)
+        cleaned.append("\n".join(stripped_lines))
+    return cleaned
 
 # === Message Filters for Agent Handoffs ===
 
@@ -83,7 +104,7 @@ def schema_mapping_handoff_filter(handoff_message_data: HandoffInputData) -> Han
     2) Then call the tool `generate_mapped_csvs` with:
        - source_metadata_json: the JSON array above
        - mappings_json: your mapping plan JSON
-       - output_dir: output/mapped/
+       - output_dir: {DEFAULT_MAPPED_DIR}
     3) Saved the csv files using the tool, return both your mapping plan and the tool's JSON output, then end with: "Column mapping complete - mapped CSVs generated".
     """
 
@@ -109,34 +130,12 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
     mapping_plan_json = None
     source_file_list: list[str] | None = None
 
-    def clean_json_blocks(text: str) -> list[str]:
-        candidates: list[str] = []
-        block_pattern = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.IGNORECASE | re.DOTALL)
-        blocks = block_pattern.findall(text)
-        if blocks:
-            candidates.extend(blocks)
-        # Append raw text as fallback attempt
-        candidates.append(text)
-
-        cleaned: list[str] = []
-        for candidate in candidates:
-            stripped_lines = []
-            for line in candidate.splitlines():
-                striped = line.strip()
-                if striped.startswith("//"):
-                    continue
-                if striped.startswith("#"):
-                    continue
-                stripped_lines.append(line)
-            cleaned.append("\n".join(stripped_lines))
-        return cleaned
-
     for message in reversed(messages):
         raw_content = getattr(message, 'content', None) if hasattr(message, 'content') else message.get('content')
         content = _message_to_text(raw_content)
 
         if '"outputs"' in content and mapped_outputs is None:
-            for block in clean_json_blocks(content):
+            for block in _extract_json_blocks(content):
                 if '"outputs"' not in block:
                     continue
                 try:
@@ -176,7 +175,7 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
                     pass
 
         if mapping_plan_json is None and '"mappings"' in content:
-            for block in clean_json_blocks(content):
+            for block in _extract_json_blocks(content):
                 if '"mappings"' not in block:
                     continue
                 try:
@@ -294,6 +293,117 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
     )
 
 
+def evaluation_handoff_filter(handoff_message_data: HandoffInputData) -> HandoffInputData:
+    """Collect artifacts required for the evaluation agent."""
+    print("HANDOFF: Filtering data for Evaluation Agent")
+
+    messages = handoff_message_data.input_history
+
+    final_dataset_path: str | None = None
+    mapping_plan_json: str | None = None
+    source_metadata_json: str | None = None
+    target_schema_json: str | None = None
+
+    for message in reversed(messages):
+        raw_content = getattr(message, 'content', None) if hasattr(message, 'content') else message.get('content')
+        content = _message_to_text(raw_content)
+
+        if final_dataset_path is None and '"output_path"' in content:
+            for block in _extract_json_blocks(content):
+                try:
+                    parsed = json.loads(block)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict) and parsed.get('output_path'):
+                    candidate = str(parsed['output_path']).strip()
+                    path_obj = Path(candidate)
+                    if not path_obj.is_absolute():
+                        path_obj = (PROJECT_ROOT / candidate).resolve()
+                    final_dataset_path = str(path_obj)
+                    print(f"Captured final dataset path: {final_dataset_path}")
+                    break
+
+        if mapping_plan_json is None and '"mappings"' in content:
+            for block in _extract_json_blocks(content):
+                try:
+                    parsed = json.loads(block)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict) and 'mappings' in parsed:
+                    mapping_plan_json = json.dumps(parsed)
+                    print("Captured mapping plan JSON for evaluation")
+                    break
+
+        if source_metadata_json is None and content.strip().startswith('[') and 'file_path' in content:
+            start = content.find('[')
+            end = content.rfind(']') + 1
+            if start != -1 and end > start:
+                snippet = content[start:end]
+                try:
+                    json.loads(snippet)
+                    source_metadata_json = snippet
+                    print("Captured source metadata JSON for evaluation")
+                except json.JSONDecodeError:
+                    pass
+
+        if target_schema_json is None and 'Target Schema:' in content:
+            schema_start = content.find('{')
+            schema_end = content.rfind('}') + 1
+            if schema_start != -1 and schema_end > schema_start:
+                snippet = content[schema_start:schema_end]
+                try:
+                    json.loads(snippet)
+                    target_schema_json = snippet
+                    print("Captured target schema JSON for evaluation")
+                except json.JSONDecodeError:
+                    pass
+
+    if final_dataset_path is None:
+        final_dataset_path = str(DEFAULT_FINAL_OUTPUT)
+        print(f"WARNING: Final dataset path not found; using default {final_dataset_path}")
+
+    if target_schema_json is None:
+        target_schema_json = json.dumps(DemandForecastingRecord.model_json_schema(), indent=2)
+        print("Using default target schema JSON for evaluation")
+
+    config_path_str = str(DEFAULT_EVALUATION_CONFIG) if DEFAULT_EVALUATION_CONFIG.exists() else ""
+    output_dir_str = str((DEFAULT_FINAL_OUTPUT.parent) / "evaluations")
+
+    evaluation_prompt = f"""
+    You are the SchemaMappingEvaluationAgent responsible for validating the mapped dataset and producing improvement insights.
+
+    FINAL DATASET PATH:
+    {final_dataset_path}
+
+    MAPPING PLAN JSON:
+    {mapping_plan_json or "{}"}
+
+    SOURCE METADATA JSON:
+    {source_metadata_json or "[]"}
+
+    TARGET SCHEMA JSON:
+    {target_schema_json}
+
+    TASKS:
+    1. Call `evaluate_schema_mapping_with_deepeval` with these parameters:
+       - final_dataset_path: "{final_dataset_path}"
+       - mapping_plan_json: (use the mapping plan JSON block above)
+       - source_metadata_json: (use the metadata JSON block above)
+       - target_schema_json: (use the target schema JSON block above)
+       - config_path: "{config_path_str}"
+       - output_dir: "{output_dir_str}"
+    2. Summarize deterministic metric outcomes (pass/fail, scores) and note any skipped LLM metrics.
+    3. Produce a concise improvement prompt that can be re-used to refine future runs.
+    4. End with the phrase: "Evaluation complete - DeepEval report generated".
+    """
+
+    return HandoffInputData(
+        input_history=[{"role": "user", "content": evaluation_prompt}],
+        pre_handoff_items=tuple(),
+        new_items=tuple()
+    )
+
+
 # def quality_assessment_handoff_filter(handoff_message_data: HandoffInputData) -> HandoffInputData:
 #     """
 #     Filter and prepare data for quality assessment agent.
@@ -398,6 +508,23 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
 # )
 
 # Agent 3: Data Integration Agent
+schema_mapping_evaluation_agent = Agent(
+    name="SchemaMappingEvaluationAgent",
+    instructions="""
+    You are the final quality gate for the schema mapping workflow.
+
+    MISSION: Run DeepEval against the integrated dataset, summarize findings, and propose improvements.
+
+    EXECUTION PROTOCOL:
+    1. Execute `evaluate_schema_mapping_with_deepeval` using the dataset path, mapping plan JSON, metadata JSON,
+       target schema JSON, and provided config/output paths.
+    2. Summarize deterministic metrics (score, threshold, pass/fail) and mention any LLM metrics that were skipped or failed.
+    3. Craft a succinct improvement prompt (max three bullets) grounded in failing metrics.
+    4. Conclude with a brief narrative and the phrase: "Evaluation complete - DeepEval report generated".
+    """,
+    tools=[evaluate_schema_mapping_with_deepeval]
+)
+
 data_integration_agent = Agent(
     name="DataIntegrationAgent",
     instructions="""
@@ -416,28 +543,29 @@ data_integration_agent = Agent(
     - Provide the tool's JSON with the final output path and row/column counts.
     - End with the required completion message.
     """,
-    tools=[merge_mapped_csvs_to_target]
+    tools=[merge_mapped_csvs_to_target],
+    handoffs=[handoff(schema_mapping_evaluation_agent, input_filter=evaluation_handoff_filter)]
 )
 
 # Agent 2: Column Mapping Agent  
 column_mapping_agent = Agent(
     name="ColumnMappingAgent",
-    instructions="""
-    You are an expert column mapping agent specializing in retail/demand forecasting data transformation.
-    
+    instructions=f"""
+    You are an expert column mapping agent specializing in retail demand forecasting data transformation.
+
     MISSION: Create high-confidence column mapping plans between analyzed source datasets and target demand forecasting schema, and generate per-dataset mapped CSVs ready for integration.
-    
+
     EXECUTION PROTOCOL:
     1. Extract dataset metadata and the target schema from the previous step.
     2. REASON: Reason and propose a JSON mapping plan yourself that assigns source columns to target schema fields per dataset.
     3. SCORE: Assign confidence scores and skip mappings below 0.5 confidence.
     4. REASON: Provide brief rationale for key mappings.
-    5. PRODUCE: Call the `generate_mapped_csvs` tool with the source metadata and your mapping JSON to generate per-dataset mapped CSVs under output/mapped/.
-    
+    5. PRODUCE: Call the `generate_mapped_csvs` tool with the source metadata and your mapping JSON to generate per-dataset mapped CSVs under {DEFAULT_MAPPED_DIR}.
+
     CRITICAL:
     - You must author the mapping plan JSON directly in your response.
-    - Then you must execute `generate_mapped_csvs` with the source metadata and your mapping plan, saving to output/mapped/.
-    
+    - Then you must execute `generate_mapped_csvs` with the source metadata and your mapping plan, saving to {DEFAULT_MAPPED_DIR}.
+
     MAPPING STRATEGY:
     - Prioritize semantic meaning over syntactic similarity
     - Consider business context: retail, sales, inventory, promotions, geography
@@ -448,22 +576,22 @@ column_mapping_agent = Agent(
     
     ### Mapping Plan
     ```json
-    {
+    {{
       "mappings": [
-        {"source_column": "...", "target_column": "...", "confidence": 0.9, "reasoning": "..."},
+        {{"source_column": "...", "target_column": "...", "confidence": 0.9, "reasoning": "..."}},
         ...
       ]
-    }
+    }}
     ```
 
     ### Tool Output
     ```json
-    {
+    {{
       "outputs": [
-        {"source_file": "...", "output_path": "...", "columns": [...]},
+        {{"source_file": "...", "output_path": "...", "columns": [...]}},
         ...
       ]
-    }
+    }}
     ```
     
     Finally, end your entire response with the phrase: "Column mapping complete - mapped CSVs generated"
@@ -477,13 +605,13 @@ column_mapping_agent = Agent(
 data_prep_agent = Agent(
     name="DataPrepAgent", 
     instructions="""
-    You are a specialized data preparation and analysisagent optimized for retail/demand forecasting datasets.
+    You are a specialized data preparation and analysis agent optimized for retail demand forecasting datasets.
     
     MISSION: Systematically analyze ALL provided source datasets and return structured metadata for downstream semantic mapping.
     
     EXECUTION PROTOCOL:
     1. Parse the list of file paths from the user's prompt.
-    2. For EACH dataset, call the `load_and_describe_dataset` tool to load the top 5 rows and return metadata including columns, dtypes, and a small sample.
+    2. For EACH dataset, call the `load_and_describe_dataset` tool to load the top 10 rows and return metadata including columns, dtypes, and a small sample.
     3. COMPILE: Aggregate all per-file metadata objects into ONE JSON array.
     4. VALIDATE: Ensure every input file has a corresponding metadata object or an error entry.
     5. OUTPUT: Return ONLY the compiled JSON metadata array (no prose). After the JSON, print a concise completion message on a new line.

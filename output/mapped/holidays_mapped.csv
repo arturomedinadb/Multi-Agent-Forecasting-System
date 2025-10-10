@@ -1,6 +1,11 @@
-date,is_holiday,holiday_name
-01/01/2022,1,New Year's Day
-15/04/2022,1,Good Friday
-23/05/2022,1,Victoria Day
-01/07/2022,1,Canada Day
-05/09/2022,1,Labour Day
+date,holiday_name,is_holiday,store_region
+01/01/2022,New Year's Day,1,ALL
+15/04/2022,Good Friday,1,ALL
+23/05/2022,Victoria Day,1,ALL
+01/07/2022,Canada Day,1,ALL
+05/09/2022,Labour Day,1,ALL
+30/09/2022,National Day for Truth and Reconciliation,1,Some Provinces
+10/10/2022,Thanksgiving Day,1,ALL
+11/11/2022,Remembrance Day,1,Some Provinces
+25/12/2022,Christmas Day,1,ALL
+26/12/2022,Boxing Day,1,Some Provinces
