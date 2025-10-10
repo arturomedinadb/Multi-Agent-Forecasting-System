@@ -1,0 +1,29 @@
+# DeepEval configuration for schema mapping agent runs
+paths:
+  final_dataset: output/final_mapped_dataset.csv
+  mapping_manifest: output/mapped/manifest.json
+  mapping_plan: output/mapped/mapping_plan.json
+  source_metadata: output/mapped/source_metadata.json
+metrics:
+  field_coverage:
+    minimum_ratio: 0.9
+  type_compatibility:
+    fail_on_casts: ["string->number", "number->string"]
+  semantic_similarity:
+    minimum_score: 0.5
+  llm_judge:
+    enabled: true
+    metric_names:
+      - TaskCompletion
+      - AnswerRelevancy
+thresholds:
+  task_completion: 0.6
+  answer_relevancy: 0.6
+llm:
+  judge_model: ${DEEPEVAL_JUDGE_MODEL:-gpt-4o-mini}
+  temperature: 0.0
+  max_retries: 1
+runtime:
+  seed: ${DEEPEVAL_SEED:-2024}
+  output_dir: output/evaluations
+  write_markdown_summary: true

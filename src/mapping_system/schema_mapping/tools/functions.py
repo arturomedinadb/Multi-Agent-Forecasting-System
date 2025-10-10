@@ -1,27 +1,49 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import pandas as pd
 
 from agents import function_tool
 from ..schemas.models import DemandForecastingRecord, ColumnMapping, MappingResult
+from ..evaluation import run_schema_mapping_evaluation
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+DEFAULT_EVALUATION_CONFIG = PROJECT_ROOT / "configs" / "evaluation" / "schema_mapping.yaml"
+DEFAULT_EVALUATION_OUTPUT = PROJECT_ROOT / "output" / "evaluations"
+
+
+def _get_row_limit(default: int = 10) -> int:
+    """Return the configured row sampling limit for tooling workflows."""
+
+    raw_value = os.getenv("AGENT_ROW_LIMIT", "").strip()
+    if not raw_value:
+        return default
+
+    try:
+        row_limit = int(raw_value)
+    except ValueError:
+        return default
+
+    return row_limit if row_limit > 0 else default
 
 # --- Data Preparation Tools ---
 
 @function_tool
 def load_and_describe_dataset(file_path: str) -> str:
     """
-    Load the top 5 rows from a CSV and return lightweight metadata including
+    Load the top 10 rows from a CSV and return lightweight metadata including
     columns and dtypes plus a small sample. The AGENT will write the
     column_descriptions based on this context.
 
     Returns a JSON string with keys: file_path, shape, columns, dtypes, sample.
     """
-    print(f"TOOL: Loading top 5 rows of '{file_path}'...")
+    row_limit = _get_row_limit()
+    print(f"TOOL: Loading top {row_limit} rows of '{file_path}'...")
     try:
-        df = pd.read_csv(file_path, nrows=5)
+        df = pd.read_csv(file_path, nrows=row_limit)
         metadata: Dict[str, Any] = {
             "file_path": file_path,
             "shape": list(df.shape),
@@ -79,6 +101,8 @@ def run_generate_mapped_csvs(
 
     results: List[Dict[str, Any]] = []
 
+    row_limit = _get_row_limit()
+
     for meta in source_meta:
         path = meta.get("file_path")
         if not path:
@@ -98,7 +122,7 @@ def run_generate_mapped_csvs(
             continue
 
         try:
-            df = pd.read_csv(path, nrows=5)
+            df = pd.read_csv(path, nrows=row_limit)
         except Exception as e:
             print(f"TOOL ERROR: Unable to read '{path}': {e}")
             continue
@@ -136,6 +160,71 @@ def run_generate_mapped_csvs(
 
     print(f"TOOL: Wrote {len(results)} mapped CSVs to {output_dir}")
     return json.dumps({"outputs": results})
+
+
+def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict[str, Any] | List[Dict[str, Any]]:
+    if isinstance(raw, (dict, list)):
+        return raw
+    text = raw.strip()
+
+    # Attempt to parse inline JSON first to avoid filesystem lookups on large payloads
+    if text.startswith("{") or text.startswith("["):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+    candidate_path = Path(text)
+    try:
+        if candidate_path.exists():
+            return json.loads(candidate_path.read_text())
+    except OSError:
+        # Treat overly long or invalid paths as JSON strings on fallback
+        pass
+
+    return json.loads(text)
+
+
+def run_schema_mapping_deepeval(
+    *,
+    final_dataset_path: str,
+    mapping_plan_json: str,
+    source_metadata_json: str,
+    target_schema_json: str,
+    config_path: Optional[str] = None,
+    output_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    mapping_plan = _load_json_payload(mapping_plan_json)
+    source_metadata = _load_json_payload(source_metadata_json)
+    target_schema = _load_json_payload(target_schema_json)
+
+    if not isinstance(mapping_plan, dict):
+        raise ValueError("mapping_plan_json must decode to a JSON object")
+    if not isinstance(source_metadata, list):
+        raise ValueError("source_metadata_json must decode to a JSON array")
+    if not isinstance(target_schema, dict):
+        raise ValueError("target_schema_json must decode to a JSON object")
+
+    mapped_dir = PROJECT_ROOT / "output" / "mapped"
+    mapped_dir.mkdir(parents=True, exist_ok=True)
+
+    (mapped_dir / "mapping_plan.json").write_text(json.dumps(mapping_plan, indent=2))
+    (mapped_dir / "source_metadata.json").write_text(json.dumps(source_metadata, indent=2))
+    (mapped_dir / "target_schema.json").write_text(json.dumps(target_schema, indent=2))
+
+    resolved_config = config_path or (str(DEFAULT_EVALUATION_CONFIG) if DEFAULT_EVALUATION_CONFIG.exists() else None)
+    resolved_output = output_dir or str(DEFAULT_EVALUATION_OUTPUT)
+
+    summary = run_schema_mapping_evaluation(
+        final_dataset_path=final_dataset_path,
+        mapping_plan=mapping_plan,
+        source_metadata=source_metadata,
+        target_schema=target_schema,
+        config_path=resolved_config,
+        output_dir=resolved_output,
+    )
+
+    return summary
 
 
 @function_tool
@@ -255,6 +344,32 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
         print(f"TOOL ERROR in merge_mapped_csvs_to_target: {e}")
         import traceback; traceback.print_exc()
         return json.dumps({"status": "Failed", "error": str(e)})
+
+
+@function_tool
+def evaluate_schema_mapping_with_deepeval(
+    final_dataset_path: str,
+    mapping_plan_json: str,
+    source_metadata_json: str,
+    target_schema_json: str,
+    config_path: Optional[str] = None,
+    output_dir: Optional[str] = None,
+) -> str:
+    """Run the DeepEval-powered evaluation pipeline for the schema mapping workflow."""
+
+    try:
+        summary = run_schema_mapping_deepeval(
+            final_dataset_path=final_dataset_path,
+            mapping_plan_json=mapping_plan_json,
+            source_metadata_json=source_metadata_json,
+            target_schema_json=target_schema_json,
+            config_path=config_path,
+            output_dir=output_dir,
+        )
+        return json.dumps(summary, indent=2)
+    except Exception as exc:
+        print(f"TOOL ERROR in evaluate_schema_mapping_with_deepeval: {exc}")
+        return json.dumps({"status": "Failed", "error": str(exc)})
 
 # --- Validation and Merging Tools ---
 
