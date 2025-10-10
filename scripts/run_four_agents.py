@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 import sys
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,8 +16,10 @@ from mapping_system.schema_mapping.agents.definitions import (
     data_prep_agent,
     column_mapping_agent,
     data_integration_agent,
+    schema_mapping_evaluation_agent,
     schema_mapping_handoff_filter,
     integration_handoff_filter,
+    evaluation_handoff_filter,
     HandoffInputData,
 )
 from mapping_system.schema_mapping.schemas.models import DemandForecastingRecord
@@ -43,21 +45,15 @@ async def stream_agent(agent, inputs, trace_label):
 
 
 async def main():
-    print("=== Running 3-Agent Workflow (Top 10 Rows) ===")
+    print("=== Running 4-Agent Workflow (Top 10 Rows + DeepEval) ===")
 
     source_files = [
-        # os.path.join(PROJECT_ROOT, "data/transaction_like_synth (1).csv"),
         os.path.join(PROJECT_ROOT, "data/transaction_like_synth.csv"),
         os.path.join(PROJECT_ROOT, "data/product_like_synth_wBrand.csv"),
         os.path.join(PROJECT_ROOT, "data/store_like_synth.csv"),
         os.path.join(PROJECT_ROOT, "data/holidays.csv"),
         os.path.join(PROJECT_ROOT, "data/promotion_like_synth.csv"),
         os.path.join(PROJECT_ROOT, "data/weather_monthly.csv"),
-        os.path.join(PROJECT_ROOT, "data/CPI-monthly.csv"),
-        os.path.join(PROJECT_ROOT, "data/employment_data.csv"),
-        os.path.join(PROJECT_ROOT, "data/GDP_monthly.csv"),
-        os.path.join(PROJECT_ROOT, "data/GDP_province_yearly.csv"),
-        os.path.join(PROJECT_ROOT, "data/Population.csv"),
     ]
 
     target_schema_json = json.dumps(DemandForecastingRecord.model_json_schema(), indent=2)
@@ -78,7 +74,7 @@ async def main():
         prep_history = r1.to_input_list()
         print("\n--- Handoff complete: DataPrepAgent -> ColumnMappingAgent ---\n")
 
-        # Prepare inputs for Column Mapping via shared filter
+        # Prepare inputs for Column Mapping
         mapping_handoff = schema_mapping_handoff_filter(
             HandoffInputData(input_history=prep_history, pre_handoff_items=tuple(), new_items=tuple())
         )
@@ -96,9 +92,20 @@ async def main():
         integration_inputs = integration_handoff.input_history
 
         # Turn 3: Data Integration
-        await stream_agent(data_integration_agent, integration_inputs, "Agent 3: Integration")
+        r3 = await stream_agent(data_integration_agent, integration_inputs, "Agent 3: Integration")
+        integration_history = r3.to_input_list()
+        print("\n--- Handoff complete: DataIntegrationAgent -> EvaluationAgent ---\n")
 
-        print("=== 3-Agent run complete ===")
+        # Prepare inputs for Evaluation
+        evaluation_handoff = evaluation_handoff_filter(
+            HandoffInputData(input_history=integration_history, pre_handoff_items=tuple(), new_items=tuple())
+        )
+        evaluation_inputs = evaluation_handoff.input_history
+
+        # Turn 4: Evaluation
+        await stream_agent(schema_mapping_evaluation_agent, evaluation_inputs, "Agent 4: Evaluation")
+
+        print("=== 4-Agent run complete ===")
     except NotImplementedError:
         print("Runner is a stub; streaming handoffs are unavailable here. Run in an environment with the Agents SDK.")
     except OpenAIError as err:
