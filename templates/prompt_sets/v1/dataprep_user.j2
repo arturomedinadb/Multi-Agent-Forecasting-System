@@ -1,0 +1,13 @@
+Analyze the following datasets and return a JSON array of per-file metadata.
+Use ONLY the top {{ row_limit }} rows per dataset. For each file, call the tool and compile results.
+
+Source Data Files: {{ source_files | tojson_pretty }}
+{% if target_schema_json is defined and target_schema_json %}
+Target Schema:
+{{ target_schema_json | ensure_triple_backticks('json') }}
+{% endif %}
+
+{# Variables required (as per registry):
+source_files (list of paths), row_limit (int).
+The target_schema_json block is optional—template includes it if you pass it.
+#}

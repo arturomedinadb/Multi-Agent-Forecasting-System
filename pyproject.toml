@@ -50,6 +50,7 @@ dependencies = [
     "fastparquet>=2024.5.0",
     "deepeval>=0.22.0",
     "pyyaml>=6.0",
+    "jinja2 (>=3.1.6,<4.0.0)",
 ]
 
 [project.optional-dependencies]
@@ -202,3 +203,9 @@ module = [
     "pandera.*",
 ]
 ignore_missing_imports = true
+
+[tool.poetry.dependencies]
+jinja2 = "^3.1.4"
+
+[tool.poetry]
+packages = [{ include = "mapping_system", from = "src" }]
