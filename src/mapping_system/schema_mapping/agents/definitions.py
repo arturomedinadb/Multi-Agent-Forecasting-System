@@ -3,6 +3,7 @@ import ast
 import json
 import re
 from pathlib import Path
+from ..prompts.factory import get_renderer
 
 import pandas as pd
 
@@ -89,25 +90,14 @@ def schema_mapping_handoff_filter(handoff_message_data: HandoffInputData) -> Han
             except:
                 pass
 
-    schema_mapping_prompt = f"""
-    You are receiving dataset metadata and a target schema.
-
-    DATASET METADATA (JSON array):
-    {dataset_metadata or "[]"}
-
-    TARGET SCHEMA (JSON):
-    {target_schema or "{}"}
-
-    TASK:
-    1) REASON and write a JSON mapping plan yourself that assigns source columns to target schema fields per dataset, using this structure:
-       {{"mappings": [{{"source_column": "...", "target_column": "...", "confidence": 0.xx, "reasoning": "..."}}...]}}
-    2) Then call the tool `generate_mapped_csvs` with:
-       - source_metadata_json: the JSON array above
-       - mappings_json: your mapping plan JSON
-       - output_dir: {DEFAULT_MAPPED_DIR}
-    3) Saved the csv files using the tool, return both your mapping plan and the tool's JSON output, then end with: "Column mapping complete - mapped CSVs generated".
-    """
-
+    renderer = get_renderer()
+    schema_mapping_prompt = renderer.render(
+        "ColumnMappingAgent", 
+        dataset_metadata_json=dataset_metadata or "[]", 
+        target_schema_json=target_schema or "{}", 
+        mapped_dir=str(DEFAULT_MAPPED_DIR),
+    )
+    
     return HandoffInputData(
         input_history=[{"role": "user", "content": schema_mapping_prompt}],
         pre_handoff_items=tuple(),
@@ -268,24 +258,13 @@ def integration_handoff_filter(handoff_message_data: HandoffInputData) -> Handof
         target_schema = json.dumps(DemandForecastingRecord.model_json_schema(), indent=2)
         print("Using default target schema JSON for integration")
 
-    integration_prompt = f"""
-    You are the DataIntegrationAgent responsible for producing the consolidated dataset.
-
-    MAPPED CSV MANIFEST (JSON):
-    {mapped_outputs or "{}"}
-
-    TARGET SCHEMA (JSON):
-    {target_schema}
-
-    CRITICAL:
-    - Call `merge_mapped_csvs_to_target(mapped_outputs_json=..., target_schema_json=..., output_path=...)`
-    - Use output_path: {output_path}
-    - The final CSV must be saved at this path and represent the full target schema.
-    - Finish your response with: "Integration complete - final mapped dataset created"
-
-    Provide the tool's JSON summary after execution.
-    """
-
+    renderer = get_renderer()
+    integration_prompt = renderer.render(
+        "DataIntegrationAgent",
+        mapped_manifest_json=mapped_outputs or "{}",
+        target_schema_json=target_schema,
+        output_path=output_path,
+    )
     return HandoffInputData(
         input_history=[{"role": "user", "content": integration_prompt}],
         pre_handoff_items=tuple(),
@@ -369,34 +348,16 @@ def evaluation_handoff_filter(handoff_message_data: HandoffInputData) -> Handoff
     config_path_str = str(DEFAULT_EVALUATION_CONFIG) if DEFAULT_EVALUATION_CONFIG.exists() else ""
     output_dir_str = str((DEFAULT_FINAL_OUTPUT.parent) / "evaluations")
 
-    evaluation_prompt = f"""
-    You are the SchemaMappingEvaluationAgent responsible for validating the mapped dataset and producing improvement insights.
-
-    FINAL DATASET PATH:
-    {final_dataset_path}
-
-    MAPPING PLAN JSON:
-    {mapping_plan_json or "{}"}
-
-    SOURCE METADATA JSON:
-    {source_metadata_json or "[]"}
-
-    TARGET SCHEMA JSON:
-    {target_schema_json}
-
-    TASKS:
-    1. Call `evaluate_schema_mapping_with_deepeval` with these parameters:
-       - final_dataset_path: "{final_dataset_path}"
-       - mapping_plan_json: (use the mapping plan JSON block above)
-       - source_metadata_json: (use the metadata JSON block above)
-       - target_schema_json: (use the target schema JSON block above)
-       - config_path: "{config_path_str}"
-       - output_dir: "{output_dir_str}"
-    2. Summarize deterministic metric outcomes (pass/fail, scores) and note any skipped LLM metrics.
-    3. Produce a concise improvement prompt that can be re-used to refine future runs.
-    4. End with the phrase: "Evaluation complete - DeepEval report generated".
-    """
-
+    renderer = get_renderer()
+    evaluation_prompt = renderer.render(
+        "SchemaMappingEvaluationAgent",
+        final_dataset_path=final_dataset_path,
+        mapping_plan_json=mapping_plan_json or "{}",
+        source_metadata_json=source_metadata_json or "[]",
+        target_schema_json=target_schema_json,
+        config_path=str(DEFAULT_EVALUATION_CONFIG) if DEFAULT_EVALUATION_CONFIG.exists() else "",
+        output_dir=str((DEFAULT_FINAL_OUTPUT.parent) / "evaluations"),
+    )
     return HandoffInputData(
         input_history=[{"role": "user", "content": evaluation_prompt}],
         pre_handoff_items=tuple(),

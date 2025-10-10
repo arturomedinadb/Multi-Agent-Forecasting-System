@@ -1,0 +1,11 @@
+{# Shared macros for repeated blocks #}
+
+{% macro fenced_json(json_text, lang='json') -%}
+```{{ lang }}
+{{ json_text }}
+```
+{%- endmacro %}
+
+{% macro required_footer(text) -%}
+{{ text }}
+{%- endmacro %}

@@ -15,6 +15,8 @@ if SRC_ROOT not in sys.path:
 from mapping_system.schema_mapping.agents.definitions import data_prep_agent
 from mapping_system.schema_mapping.tools.functions import load_and_describe_dataset
 from agents import Runner
+from mapping_system.schema_mapping.prompts.factory import get_renderer
+
 
 
 async def main():
@@ -29,12 +31,12 @@ async def main():
         os.path.join(PROJECT_ROOT, "data/weather_monthly.csv"),
     ]
 
-    prompt = f"""
-    Analyze the following datasets and return a JSON array of per-file metadata.
-    Use ONLY the top 5 rows per dataset. For each file, call the tool and compile results.
-
-    Source Data Files: {source_files}
-    """
+    renderer = get_renderer()
+    prompt = renderer.render(
+        "DataPrepAgent",
+        source_files=source_files,
+        row_limit=5,  
+    )
 
     try:
         result = await Runner.run(data_prep_agent, [{"role": "user", "content": prompt}])
