@@ -5,6 +5,8 @@ import sys
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
+from mapping_system.schema_mapping.prompts.factory import get_renderer
+
 load_dotenv()
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -58,15 +60,19 @@ async def main():
 
     target_schema_json = json.dumps(DemandForecastingRecord.model_json_schema(), indent=2)
 
+    renderer = get_renderer()
+    dataprep_prompt = renderer.render(
+        "DataPrepAgent",
+        source_files=source_files,
+        row_limit=10,  # keep same behavior as before
+        target_schema_json=target_schema_json,
+    )
+
     inputs: List[Dict[str, Any]] = [{
         "role": "user",
-        "content": (
-            "Analyze the following datasets and return a JSON array of per-file metadata.\n"
-            "Use ONLY the top 10 rows per dataset. For each file, call the tool and compile results.\n\n"
-            f"Source Data Files: {source_files}\n\n"
-            "Target Schema:\n" + target_schema_json
-        )
+        "content": dataprep_prompt
     }]
+
 
     try:
         # Turn 1: Data Preparation

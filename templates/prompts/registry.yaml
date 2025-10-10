@@ -1,0 +1,16 @@
+# Maps logical prompt names to template files + required variables
+DataPrepAgent:
+  template: templates/prompt_sets/v1/dataprep_user.j2
+  required_vars: [source_files, row_limit]
+
+ColumnMappingAgent:
+  template: templates/prompt_sets/v1/column_mapping_user.j2
+  required_vars: [dataset_metadata_json, target_schema_json, mapped_dir]
+
+DataIntegrationAgent:
+  template: templates/prompt_sets/v1/integration_user.j2
+  required_vars: [mapped_manifest_json, target_schema_json, output_path]
+
+SchemaMappingEvaluationAgent:
+  template: templates/prompt_sets/v1/evaluation_user.j2
+  required_vars: [final_dataset_path, mapping_plan_json, source_metadata_json, target_schema_json, config_path, output_dir]
