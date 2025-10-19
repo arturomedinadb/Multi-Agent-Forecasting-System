@@ -45,9 +45,7 @@ dependencies = [
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "python-dotenv>=1.0.0",
-    "pandera>=0.20.0",
     "pyarrow>=15.0.0",
-    "fastparquet>=2024.5.0",
     "deepeval>=0.22.0",
     "pyyaml>=6.0",
     "jinja2 (>=3.1.6,<4.0.0)",
@@ -84,11 +82,11 @@ Issues = "https://github.com/your-org/ai_forecasting_agents/issues"
 Changelog = "https://github.com/your-org/ai_forecasting_agents/blob/main/CHANGELOG.md"
 
 [project.scripts]
-schema-mapper = "src.ai_forecasting_agents.schema_mapping.run_workflow:main"
+schema-mapper = "mapping_system.schema_mapping.run_workflow:main"
 schema-mapping-eval = "mapping_system.schema_mapping.evaluation.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ai_forecasting_agents"]
+packages = ["src/mapping_system"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,23 +1,32 @@
-# End-To-End AI Forecasting Agent
+# End-to-End AI Schema Mapping & Forecasting Agent System
 
-This project orchestrates a multi-agent workflow to clean, map, and evaluate retail demand forecasting data.
-
-## Environment Variables
-
-Set the following variables before running any agent or evaluation workflows:
-
-- `DEEPEVAL_API_KEY` – optional; required only when using DeepEval metrics that rely on an external judge model (e.g., `TaskCompletionMetric`, `AnswerRelevancyMetric`). Deterministic metrics and custom checks run without this key.
-- `DEEPEVAL_JUDGE_MODEL` – optional override for the language model DeepEval should use when a judge is needed. Defaults to `gpt-4o-mini` if unset.
-- `DEEPEVAL_SEED` – optional integer used to seed DeepEval runs for repeatable sampling and metric behavior.
-
-Export these variables with `export VAR_NAME=value` (or add them to your `.env`). When no API key is provided, the evaluation pipeline automatically falls back to deterministic metrics only.
+An intelligent multi-agent system that transforms heterogeneous retail datasets into standardized demand forecasting schemas using OpenAI's Agents SDK.
 
 ## Quick Start
 
 ```bash
-poetry install
-poetry run schema-mapper
-poetry run schema-mapping-eval
+# Install
+pip install -e .
+
+# Set API key
+export OPENAI_API_KEY="sk-your-key-here"
+
+# Run workflow
+python scripts/examples/run_four_agents.py
 ```
 
-See `docs/evaluation/schema_mapping.md` for detailed evaluation guidance.
+## Documentation
+
+- `docs/HOW_JINJA2_WORKS.md` - Understanding the Jinja2 template system
+- `scripts/examples/README.md` - Testing guide
+
+## System Architecture
+
+This system implements a 4-agent sequential workflow:
+1. **DataPrepAgent** - Analyzes source datasets
+2. **ColumnMappingAgent** - Creates semantic column mappings
+3. **DataIntegrationAgent** - Merges mapped CSVs
+4. **SchemaMappingEvaluationAgent** - Validates quality
+
+For more details, see the documentation files.
+

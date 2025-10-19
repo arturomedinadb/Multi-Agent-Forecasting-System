@@ -1,17 +1,63 @@
-You are the DataIntegrationAgent responsible for producing the consolidated dataset.
+# DATA INTEGRATION TASK
 
-MAPPED CSV MANIFEST (JSON):
+## Objective
+Merge multiple mapped CSV files into a single consolidated dataset matching the complete target schema.
+
+## Input: Mapped CSV Manifest
 {{ mapped_manifest_json | ensure_triple_backticks('json') }}
 
-TARGET SCHEMA (JSON):
+## Input: Target Schema Definition
 {{ target_schema_json | ensure_triple_backticks('json') }}
 
-CRITICAL:
-- Call `merge_mapped_csvs_to_target(mapped_outputs_json=..., target_schema_json=..., output_path=...)`
-- Use output_path: {{ output_path }}
-- The final CSV must be saved at this path and represent the full target schema.
-- Finish your response with: "Integration complete - final mapped dataset created"
+## Output Configuration
+- **Output Path**: `{{ output_path }}`
+- **Format**: CSV with all target schema columns
 
-Provide the tool's JSON summary after execution.
+## Execution Steps
 
-{# Variables: mapped_manifest_json, target_schema_json, output_path. #}
+### 1. UNDERSTAND INPUTS
+Review the mapped CSV files:
+- Each file contains a subset of target schema columns
+- Files may have overlapping columns (e.g., date, product_id, store_id)
+- Some target schema columns may be missing from all files (will be filled with None)
+
+### 2. MERGE STRATEGY
+Perform intelligent merge:
+- **Identify join keys**: Common columns like `date`, `product_id`, `store_id`, `store_region`
+- **Left joins**: Start with widest dataset, iteratively merge others
+- **Handle overlaps**: Keep first occurrence, drop duplicates
+- **Preserve data**: All mapped columns must be retained
+
+### 3. SCHEMA ENFORCEMENT
+Ensure final dataset matches target schema:
+- **All columns present**: Add missing columns with None values
+- **Correct order**: Match target schema column order exactly
+- **Complete rows**: No partial records from merge operations
+
+### 4. EXECUTE MERGE
+Call `merge_mapped_csvs_to_target` with:
+- **mapped_outputs_json**: The manifest JSON above
+- **target_schema_json**: The target schema JSON above
+- **output_path**: `{{ output_path }}`
+
+### 5. VERIFY & REPORT
+After tool execution:
+- Confirm file created at `{{ output_path }}`
+- Report statistics: total rows, total columns
+- List any columns that were added as None (missing from all sources)
+
+### 6. OUTPUT FORMAT
+Print the tool's JSON response, which should contain:
+```json
+{
+  "status": "Success",
+  "output_path": "{{ output_path }}",
+  "rows": <count>,
+  "columns": [list of column names]
+}
+```
+
+End with: "Integration complete - final mapped dataset created"
+
+---
+**Merge Keys**: date, product_id, store_id, store_region | **Schema Compliance**: 100% target coverage

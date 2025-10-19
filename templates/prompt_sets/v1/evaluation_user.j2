@@ -1,27 +1,104 @@
-You are the SchemaMappingEvaluationAgent responsible for validating the mapped dataset and producing improvement insights.
+# QUALITY EVALUATION TASK
 
-FINAL DATASET PATH:
-{{ final_dataset_path }}
+## Objective
+Validate the schema mapping workflow output using comprehensive metrics and generate actionable improvement recommendations.
 
-MAPPING PLAN JSON:
+## Input: Final Mapped Dataset
+**Path**: `{{ final_dataset_path }}`
+
+## Input: Mapping Plan
 {{ mapping_plan_json | ensure_triple_backticks('json') }}
 
-SOURCE METADATA JSON:
+## Input: Source Metadata
 {{ source_metadata_json | ensure_triple_backticks('json') }}
 
-TARGET SCHEMA JSON:
+## Input: Target Schema
 {{ target_schema_json | ensure_triple_backticks('json') }}
 
-TASKS:
-1. Call `evaluate_schema_mapping_with_deepeval` with these parameters:
-   - final_dataset_path: "{{ final_dataset_path }}"
-   - mapping_plan_json: (use the mapping plan JSON block above)
-   - source_metadata_json: (use the metadata JSON block above)
-   - target_schema_json: (use the target schema JSON block above)
-   - config_path: "{{ config_path }}"
-   - output_dir: "{{ output_dir }}"
-2. Summarize deterministic metric outcomes (pass/fail, scores) and note any skipped LLM metrics.
-3. Produce a concise improvement prompt that can be re-used to refine future runs.
-4. End with the phrase: "Evaluation complete - DeepEval report generated".
+## Evaluation Configuration
+- **Config File**: `{{ config_path }}`
+- **Output Directory**: `{{ output_dir }}`
 
-{# Variables: final_dataset_path, mapping_plan_json, source_metadata_json, target_schema_json, config_path, output_dir. #}
+## Execution Steps
+
+### 1. RUN EVALUATION SUITE
+Call `evaluate_schema_mapping_with_deepeval` with all parameters:
+```python
+evaluate_schema_mapping_with_deepeval(
+    final_dataset_path="{{ final_dataset_path }}",
+    mapping_plan_json=<mapping plan JSON above>,
+    source_metadata_json=<source metadata JSON above>,
+    target_schema_json=<target schema JSON above>,
+    config_path="{{ config_path }}",
+    output_dir="{{ output_dir }}"
+)
+```
+
+### 2. ANALYZE RESULTS
+The tool will return metrics in this structure:
+```json
+{
+  "metrics": [
+    {"name": "Field Coverage", "score": 0.95, "threshold": 0.9, "success": true},
+    {"name": "Type Compatibility", "score": 1.0, "threshold": 1.0, "success": true},
+    {"name": "Semantic Similarity", "score": 0.62, "threshold": 0.5, "success": true}
+  ],
+  "llm_metrics": [...],
+  "improvement_prompt": "..."
+}
+```
+
+### 3. SUMMARIZE DETERMINISTIC METRICS
+For each metric, report:
+- **Metric Name**
+- **Score** (actual value achieved)
+- **Threshold** (required minimum)
+- **Status**: ✅ PASS or ❌ FAIL
+- **Details**: Key issues if failed
+
+**Example**:
+- ✅ Field Coverage: 0.95 / 0.90 (PASS) - 95% of required fields present
+- ❌ Type Compatibility: 0.85 / 1.00 (FAIL) - 3 fields have type mismatches
+- ✅ Semantic Similarity: 0.62 / 0.50 (PASS) - Average mapping confidence acceptable
+
+### 4. REPORT LLM METRICS
+If LLM metrics were executed:
+- Report scores and pass/fail status
+- Note any that were skipped (e.g., missing API key)
+
+**Common reasons for skipped**:
+- `DEEPEVAL_API_KEY` not set
+- Model availability issues
+- Timeout errors
+
+### 5. GENERATE IMPROVEMENT PROMPT
+Based on **only the failing metrics**, create 3 specific, actionable bullets:
+
+**Example** (if Type Compatibility failed):
+```
+Recommended Improvements:
+- Fix dtype alignment for: date (string→datetime), units_sold (float→integer)
+- Review mappings with confidence < 0.6: promo_flag, seasonal_indicator
+- Add transformation logic for price fields (ensure decimal precision)
+```
+
+### 6. OUTPUT FORMAT
+Structure your response as:
+
+**Deterministic Metrics**
+- Field Coverage: [score/threshold] - [PASS/FAIL]
+- Type Compatibility: [score/threshold] - [PASS/FAIL]
+- Semantic Similarity: [score/threshold] - [PASS/FAIL]
+
+**LLM Metrics**
+- [List any LLM metrics or note if skipped]
+
+**Improvement Recommendations**
+- [Bullet 1 based on failures]
+- [Bullet 2 based on failures]
+- [Bullet 3 based on failures]
+
+End with: "Evaluation complete - DeepEval report generated"
+
+---
+**Report Location**: `{{ output_dir }}/summary.json` and `summary.md`
