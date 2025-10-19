@@ -1,18 +1,82 @@
-You are receiving dataset metadata and a target schema.
+# SEMANTIC COLUMN MAPPING TASK
 
-DATASET METADATA (JSON array):
+## Objective
+Create intelligent column mappings between source datasets and target demand forecasting schema, then generate transformed CSV files.
+
+## Input: Source Dataset Metadata
 {{ dataset_metadata_json | ensure_triple_backticks('json') }}
 
-TARGET SCHEMA (JSON):
+## Input: Target Schema
 {{ target_schema_json | ensure_triple_backticks('json') }}
 
-TASK:
-1) REASON and write a JSON mapping plan yourself that assigns source columns to target schema fields per dataset, using this structure:
-{{ '{"mappings": [{"source_column": "...", "target_column": "...", "confidence": 0.xx, "reasoning": "..."}...]}' | ensure_triple_backticks('json') }}
-2) Then call the tool `generate_mapped_csvs` with:
-   - source_metadata_json: the JSON array above
-   - mappings_json: your mapping plan JSON
-   - output_dir: {{ mapped_dir }}
-3) Saved the csv files using the tool, return both your mapping plan and the tool's JSON output, then end with: "Column mapping complete - mapped CSVs generated".
+## Execution Steps
 
-{# Variables: dataset_metadata_json (string JSON), target_schema_json (string JSON), mapped_dir (path string). #}
+### 1. SEMANTIC ANALYSIS
+For each source dataset, analyze columns and map to target schema:
+- **Prioritize semantic meaning** over syntactic similarity
+- Consider **business context**: retail, sales, inventory, promotions, geography
+- Identify synonyms: `prod_code` → `product_id`, `qty_sold` → `units_sold`, etc.
+- Match temporal patterns: `transaction_date` → `date`
+- Map hierarchies: `location_region` → `store_region`
+
+### 2. CONFIDENCE SCORING
+Assign confidence scores (0.0-1.0) to each mapping:
+- **1.0**: Perfect semantic match (e.g., `date` → `date`)
+- **0.9**: Strong semantic match with clear business meaning
+- **0.7-0.8**: Good match with reasonable inference
+- **0.5-0.6**: Weak match, needs verification
+- **< 0.5**: Do NOT include (skip these mappings)
+
+### 3. CREATE MAPPING PLAN
+Generate a JSON mapping plan with this structure:
+```json
+{
+  "mappings": [
+    {
+      "source_column": "transaction_date",
+      "target_column": "date",
+      "confidence": 0.95,
+      "reasoning": "Direct temporal field match"
+    },
+    {
+      "source_column": "prod_code",
+      "target_column": "product_id",
+      "confidence": 0.9,
+      "reasoning": "Product identifier - standard retail convention"
+    }
+  ]
+}
+```
+
+**CRITICAL**: Only include mappings with confidence > 0.5
+
+### 4. GENERATE MAPPED CSVs
+Call `generate_mapped_csvs` with:
+- **source_metadata_json**: The dataset metadata JSON from above
+- **mappings_json**: Your mapping plan JSON
+- **output_dir**: `{{ mapped_dir }}`
+
+### 5. OUTPUT FORMAT
+Structure your response as:
+
+**Mapping Plan**
+```json
+{
+  "mappings": [...]
+}
+```
+
+**Tool Output**
+```json
+{
+  "outputs": [
+    {"source_file": "...", "output_path": "...", "columns": [...]},
+    ...
+  ]
+}
+```
+
+End with: "Column mapping complete - mapped CSVs generated"
+
+---
+**Mapping Strategy**: Semantic meaning > syntax | Business context matters | Confidence threshold: 0.5

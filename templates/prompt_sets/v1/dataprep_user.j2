@@ -1,13 +1,52 @@
-Analyze the following datasets and return a JSON array of per-file metadata.
-Use ONLY the top {{ row_limit }} rows per dataset. For each file, call the tool and compile results.
+# DATA PREPARATION TASK
 
-Source Data Files: {{ source_files | tojson_pretty }}
+## Objective
+Analyze {{ source_files|length }} source datasets and extract comprehensive metadata for downstream schema mapping.
+
+## Source Datasets
+{{ source_files | tojson_pretty }}
+
+## Configuration
+- **Row Sampling**: {{ row_limit }} rows per file
+- **Total Files**: {{ source_files|length }}
+
+## Execution Steps
+
+### 1. LOAD & ANALYZE
+For EACH file in the list above:
+- Call `load_and_describe_dataset(file_path=<path>)`
+- Extract: columns, data types, sample records
+- Handle errors gracefully (record error if file can't be loaded)
+
+### 2. COMPILE METADATA
+Aggregate all results into a single JSON array with this structure:
+```json
+[
+  {
+    "file_path": "path/to/file.csv",
+    "shape": [rows, cols],
+    "columns": ["col1", "col2", ...],
+    "dtypes": {"col1": "int64", "col2": "object", ...},
+    "sample": [{"col1": val, "col2": val}, ...]
+  },
+  ...
+]
+```
+
+### 3. VALIDATE
+- Verify all {{ source_files|length }} files have entries
+- Ensure no files are skipped
+- Include error entries for any failed files
+
+### 4. OUTPUT FORMAT
+Return ONLY the JSON array, no additional text.
+After the JSON, print: "Data preparation complete - {{ source_files|length }} files analyzed"
+
 {% if target_schema_json is defined and target_schema_json %}
-Target Schema:
+## Target Schema Reference
+(For context - will be used in next step)
 {{ target_schema_json | ensure_triple_backticks('json') }}
 {% endif %}
 
-{# Variables required (as per registry):
-source_files (list of paths), row_limit (int).
-The target_schema_json block is optional—template includes it if you pass it.
-#}
+---
+**Quality Standards**: Complete coverage, accurate dtypes, clean JSON, no missing files
