@@ -15,9 +15,10 @@ DEFAULT_EVALUATION_CONFIG = PROJECT_ROOT / "configs" / "evaluation" / "schema_ma
 DEFAULT_EVALUATION_OUTPUT = PROJECT_ROOT / "output" / "evaluations"
 
 
+# === Helper Functions ===
+
 def _get_row_limit(default: int = 10) -> int:
     """Return the configured row sampling limit for tooling workflows."""
-
     raw_value = os.getenv("AGENT_ROW_LIMIT", "").strip()
     if not raw_value:
         return default
@@ -28,6 +29,50 @@ def _get_row_limit(default: int = 10) -> int:
         return default
 
     return row_limit if row_limit > 0 else default
+
+
+def _normalize_path(value: str | None) -> str | None:
+    """Normalize a file path to absolute form."""
+    if not value:
+        return None
+    try:
+        return str(Path(value).expanduser().resolve())
+    except Exception:
+        return os.path.abspath(value)
+
+
+def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict[str, Any] | List[Dict[str, Any]]:
+    """
+    Load JSON from string, dict, list, or file path.
+    
+    Tries in order:
+    1. If already dict/list, return as-is
+    2. Parse as inline JSON string
+    3. Try as file path
+    4. Raise error if all fail
+    """
+    if isinstance(raw, (dict, list)):
+        return raw
+    
+    text = raw.strip()
+    
+    # Attempt to parse inline JSON first to avoid filesystem lookups on large payloads
+    if text.startswith("{") or text.startswith("["):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+    
+    # Try as file path
+    candidate_path = Path(text)
+    try:
+        if candidate_path.exists():
+            return json.loads(candidate_path.read_text())
+    except OSError:
+        pass
+    
+    # Last resort: parse as JSON string
+    return json.loads(text)
 
 # --- Data Preparation Tools ---
 
@@ -63,16 +108,12 @@ def run_generate_mapped_csvs(
     mappings_json: str,
     output_dir: str,
 ) -> str:
-    """Shared implementation for generating mapped CSV manifests."""
-
-    def _normalize_path(value: str | None) -> str | None:
-        if not value:
-            return None
-        try:
-            return str(Path(value).expanduser().resolve())
-        except Exception:
-            return os.path.abspath(value)
-
+    """
+    Shared implementation for generating mapped CSV manifests.
+    
+    Takes source metadata and mapping plan, generates per-dataset mapped CSVs.
+    Used by both the @function_tool wrapper and handoff filters.
+    """
     try:
         os.makedirs(output_dir, exist_ok=True)
         source_meta = json.loads(source_metadata_json) or []
@@ -160,29 +201,6 @@ def run_generate_mapped_csvs(
 
     print(f"TOOL: Wrote {len(results)} mapped CSVs to {output_dir}")
     return json.dumps({"outputs": results})
-
-
-def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict[str, Any] | List[Dict[str, Any]]:
-    if isinstance(raw, (dict, list)):
-        return raw
-    text = raw.strip()
-
-    # Attempt to parse inline JSON first to avoid filesystem lookups on large payloads
-    if text.startswith("{") or text.startswith("["):
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            pass
-
-    candidate_path = Path(text)
-    try:
-        if candidate_path.exists():
-            return json.loads(candidate_path.read_text())
-    except OSError:
-        # Treat overly long or invalid paths as JSON strings on fallback
-        pass
-
-    return json.loads(text)
 
 
 def run_schema_mapping_deepeval(
@@ -370,177 +388,3 @@ def evaluate_schema_mapping_with_deepeval(
     except Exception as exc:
         print(f"TOOL ERROR in evaluate_schema_mapping_with_deepeval: {exc}")
         return json.dumps({"status": "Failed", "error": str(exc)})
-
-# --- Validation and Merging Tools ---
-
-# @function_tool
-# def merge_and_validate_data(
-#     source_metadata_json: str, 
-#     mappings_json: str, 
-#     output_path: str
-# ) -> str:
-#     """
-#     Merges multiple source datasets, applies the schema mappings, validates each resulting record,
-#     and saves the final, clean dataset to a CSV file.
-
-#     :param source_metadata_json: JSON string of metadata for all source datasets.
-#     :param mappings_json: JSON string of the final column mappings to apply.
-#     :param output_path: The file path to save the final validated CSV.
-#     :return: A JSON string summarizing the validation and save operation results.
-#     """
-#     print("TOOL: Merging, validating, and saving data...")
-#     try:
-#         all_metadata = json.loads(source_metadata_json)
-#         mappings = json.loads(mappings_json)["mappings"]
-        
-#         # Load all dataframes (top 5 rows only)
-#         dataframes = {meta['file_path']: pd.read_csv(meta['file_path'], nrows=5) for meta in all_metadata}
-        
-#         # Identify main dataset (most columns, or one with key fields)
-#         main_df_path = max(dataframes, key=lambda k: dataframes[k].shape[1])
-#         main_df = dataframes.pop(main_df_path).copy()
-        
-#         print(f"TOOL: Identified '{main_df_path}' as the main dataset.")
-
-#         # Heuristic-based merging (can be improved with more sophisticated key detection)
-#         for path, df in dataframes.items():
-#             # Simple join key detection
-#             common_cols = list(set(main_df.columns) & set(df.columns))
-#             if "date" in str(path): common_cols = ["date"] # Special case for holidays
-            
-#             if common_cols:
-#                 try:
-#                     main_df = pd.merge(main_df, df, on=common_cols, how="left", suffixes=("", "_dup"))
-#                     main_df.drop([col for col in main_df.columns if '_dup' in col], axis=1, inplace=True)
-#                     print(f"TOOL: Merged '{path}' on {common_cols}.")
-#                 except Exception as merge_error:
-#                     print(f"TOOL WARNING: Could not merge '{path}'. Error: {merge_error}")
-#             else:
-#                  print(f"TOOL WARNING: No common columns to merge '{path}'. Skipping merge.")
-
-#         # Apply mappings
-#         final_df = pd.DataFrame()
-#         for mapping in mappings:
-#             source_col = mapping["source_column"]
-#             target_col = mapping["target_column"]
-#             if source_col in main_df.columns:
-#                 final_df[target_col] = main_df[source_col]
-
-#         # Replace NaN with None so Optional fields validate cleanly
-#         if not final_df.empty:
-#             final_df = final_df.astype(object).where(pd.notnull(final_df), None)
-
-#         # Validate records using Pydantic
-#         validated_records = []
-#         validation_errors = []
-#         for index, row in final_df.iterrows():
-#             try:
-#                 # Pydantic will coerce types and validate
-#                 record = DemandForecastingRecord(**row.to_dict())
-#                 validated_records.append(record.model_dump())
-#             except Exception as e:
-#                 validation_errors.append(f"Row {index}: {e}")
-
-#         if not validated_records:
-#             return json.dumps({
-#                 "error": "No valid records could be produced after validation.",
-#                 "total_rows_processed": len(final_df),
-#                 "validation_error_samples": validation_errors[:5]
-#             })
-
-#         # Save validated data
-#         final_validated_df = pd.DataFrame(validated_records)
-#         final_validated_df.to_csv(output_path, index=False)
-        
-#         summary = {
-#             "status": "Success",
-#             "output_path": output_path,
-#             "total_rows_processed": len(main_df),
-#             "validated_records": len(validated_records),
-#             "validation_errors": len(validation_errors),
-#             "final_shape": final_validated_df.shape
-#         }
-#         print("TOOL: Merge and validation complete.")
-#         return json.dumps(summary, indent=2)
-
-#     except Exception as e:
-#         print(f"TOOL ERROR in merge_and_validate_data: {e}")
-#         import traceback
-#         traceback.print_exc()
-#         return json.dumps({"status": "Failed", "error": str(e)})
-
-@function_tool
-def evaluate_mapping_quality(
-    mappings_json: str,
-    source_metadata_json: str,
-) -> str:
-    """
-    Simplified mapping quality evaluation focusing on confidence and semantic similarity.
-    
-    :param mappings_json: JSON string of column mappings with confidence scores.
-    :param source_metadata_json: JSON string of metadata from source datasets.
-    :return: JSON string with a simplified quality assessment.
-    """
-    print("TOOL: Evaluating mapping quality (simplified)...")
-    try:
-        mappings = json.loads(mappings_json).get("mappings", [])
-        all_metadata = json.loads(source_metadata_json)
-        
-        if not mappings:
-            return json.dumps({"warning": "No mappings provided to evaluate."})
-
-        # --- SOTA Simplified Metrics ---
-
-        # 1. Confidence Score Analysis
-        confidences = [m["confidence"] for m in mappings]
-        avg_confidence = sum(confidences) / len(confidences)
-        high_conf_count = sum(1 for c in confidences if c >= 0.8)
-        medium_conf_count = sum(1 for c in confidences if 0.5 <= c < 0.8)
-        low_conf_count = sum(1 for c in confidences if c < 0.5)
-
-        # 2. Semantic Similarity (Jaccard Similarity - SOTA yet simple)
-        # Create a lookup for column descriptions
-        descriptions = {}
-        for meta in all_metadata:
-            descriptions.update(meta.get("column_descriptions", {}))
-        
-        total_similarity = 0.0
-        for mapping in mappings:
-            source_col = mapping["source_column"]
-            target_col = mapping["target_column"]
-            
-            # Use descriptions for better semantic comparison
-            source_text = descriptions.get(source_col, source_col)
-            target_text = target_col # Target schema has no descriptions here
-            
-            set1 = set(source_text.lower().replace("_", " ").split())
-            set2 = set(target_text.lower().replace("_", " ").split())
-            
-            intersection = len(set1.intersection(set2))
-            union = len(set1.union(set2))
-            similarity = intersection / union if union > 0 else 0
-            total_similarity += similarity
-            
-        avg_similarity = total_similarity / len(mappings)
-
-        # 3. Simplified Quality Report
-        quality_assessment = {
-            "overall_summary": {
-                "total_mappings": len(mappings),
-                "average_confidence": f"{avg_confidence:.2f}",
-                "average_semantic_similarity": f"{avg_similarity:.2f} (Jaccard)"
-            },
-            "confidence_distribution": {
-                "high (>= 0.8)": high_conf_count,
-                "medium (0.5 to 0.8)": medium_conf_count,
-                "low (< 0.5)": low_conf_count,
-            },
-            "sota_notes": "Using Jaccard similarity for dependency-free semantic analysis. For higher accuracy, consider embedding-based models."
-        }
-        
-        print(f"TOOL: Simplified quality evaluation complete. Avg Confidence: {avg_confidence:.2f}")
-        return json.dumps(quality_assessment, indent=2)
-
-    except Exception as e:
-        print(f"TOOL ERROR in evaluate_mapping_quality: {e}")
-        return json.dumps({"error": str(e)})

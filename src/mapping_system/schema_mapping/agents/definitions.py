@@ -12,7 +12,6 @@ from ..tools.functions import (
     load_and_describe_dataset,
     generate_mapped_csvs,
     merge_mapped_csvs_to_target,
-    evaluate_mapping_quality,
     evaluate_schema_mapping_with_deepeval,
     run_generate_mapped_csvs,
 )
@@ -365,123 +364,33 @@ def evaluation_handoff_filter(handoff_message_data: HandoffInputData) -> Handoff
     )
 
 
-# def quality_assessment_handoff_filter(handoff_message_data: HandoffInputData) -> HandoffInputData:
-#     """
-#     Filter and prepare data for quality assessment agent.
-#     Provides mappings and metadata for quality evaluation.
-#     """
-#     print("HANDOFF: Filtering data for Quality Assessment Agent")
-    
-#     messages = handoff_message_data.input_history
-    
-#     # Extract mappings and metadata for quality assessment
-#     column_mappings = None
-#     dataset_metadata = None
-    
-#     for message in reversed(messages):
-#         content = getattr(message, 'content', '') if hasattr(message, 'content') else str(message.get('content', ''))
-        
-#         if '"mappings"' in content and column_mappings is None:
-#             column_mappings = content
-#             print(f"Found column mappings for quality assessment")
-        
-#         if 'file_path' in content and 'columns' in content and dataset_metadata is None:
-#             dataset_metadata = content
-#             print(f"Found dataset metadata for quality assessment")
-    
-#     quality_prompt = f"""
-#     You are receiving column mappings and dataset metadata for quality assessment.
-    
-#     COLUMN MAPPINGS:
-#     {column_mappings or "No column mappings found"}
-    
-#     DATASET METADATA:
-#     {dataset_metadata or "No dataset metadata found"}
-    
-#     Use the evaluate_mapping_quality tool to generate a comprehensive quality report.
-#     """
-    
-#     return HandoffInputData(
-#         input_history=[{"role": "user", "content": quality_prompt}],
-#         pre_handoff_items=tuple(),
-#         new_items=tuple()
-#     )
-
 # === Agent Definitions ===
+# Following SOTA prompt engineering: System prompts define ROLE, user prompts define TASK
 
-# Agent 4: Quality Assessor Agent
-# quality_assessor_agent = Agent(
-#     name="QualityAssessorAgent",
-#     instructions="""
-#     You are a specialized quality analytics agent providing comprehensive assessment of schema mapping workflow outcomes.
-    
-#     MISSION: Generate detailed quality intelligence to evaluate mapping accuracy, data integrity, and readiness for demand forecasting.
-    
-#     EXECUTION PROTOCOL:
-#     1. RECEIVE: Extract mappings and metadata from previous agent results
-#     2. EXECUTE: Use the evaluate_mapping_quality tool for comprehensive assessment
-#     3. ANALYZE: Review confidence scores, semantic similarity, and mapping coverage
-#     4. BENCHMARK: Compare results against SOTA quality standards
-#     5. RECOMMEND: Provide actionable insights for improvement
-#     6. SUMMARIZE: Generate final workflow completion report
-#     7. COMPLETION: This is the final agent - provide comprehensive workflow summary
-    
-#     CRITICAL: You MUST execute the evaluate_mapping_quality tool to generate the quality assessment.
-    
-#     QUALITY ASSESSMENT FRAMEWORK (SOTA):
-#     - Mapping Confidence Analysis (target: ≥0.8 average)
-#     - Semantic Similarity Scoring (Jaccard + contextual analysis)
-#     - Schema Coverage Assessment (% target fields mapped)
-#     - Data Quality Validation (validation success rate)
-#     - Business Logic Consistency (domain-specific checks)
-    
-#     OUTPUT SPECIFICATION:
-#     Provide comprehensive quality report including:
-    
-#     QUALITY ASSESSMENT COMPLETE
-    
-#     MAPPING QUALITY METRICS:
-#     - Total mappings created: X
-#     - Average confidence score: X.XX (Target: ≥0.80)
-#     - High confidence mappings (≥0.8): X/X
-#     - Schema coverage: X% (X/X target fields mapped)
-#     - Semantic similarity score: X.XX
-    
-#     DATA QUALITY METRICS:
-#     - Records processed: X
-#     - Validation success rate: X%
-#     - Data completeness: X%
-#     - Critical field coverage: X/X
-    
-#     OVERALL ASSESSMENT:
-#     - Workflow Status: SUCCESS / PARTIAL / FAILED
-#     - Readiness for forecasting: [READY/NEEDS_IMPROVEMENT/NOT_READY]
-#     - Quality grade: [A/B/C/D/F]
-    
-#     KEY RECOMMENDATIONS:
-#     - [Specific actionable insights]
-#     - [Areas for improvement]
-#     - [Next steps for demand forecasting]
-    
-#     This completes the autonomous schema mapping workflow with comprehensive quality assurance.
-#     """,
-#     tools=[evaluate_mapping_quality]
-# )
-
-# Agent 3: Data Integration Agent
+# Agent 4: Schema Mapping Evaluation Agent
 schema_mapping_evaluation_agent = Agent(
     name="SchemaMappingEvaluationAgent",
     instructions="""
-    You are the final quality gate for the schema mapping workflow.
-
-    MISSION: Run DeepEval against the integrated dataset, summarize findings, and propose improvements.
-
-    EXECUTION PROTOCOL:
-    1. Execute `evaluate_schema_mapping_with_deepeval` using the dataset path, mapping plan JSON, metadata JSON,
-       target schema JSON, and provided config/output paths.
-    2. Summarize deterministic metrics (score, threshold, pass/fail) and mention any LLM metrics that were skipped or failed.
-    3. Craft a succinct improvement prompt (max three bullets) grounded in failing metrics.
-    4. Conclude with a brief narrative and the phrase: "Evaluation complete - DeepEval report generated".
+    You are a quality assurance specialist for data schema mapping workflows.
+    
+    ROLE: Evaluate mapping quality using deterministic and LLM-based metrics, then provide actionable improvement recommendations.
+    
+    CAPABILITIES:
+    - Run comprehensive evaluation suites (DeepEval framework)
+    - Analyze field coverage, type compatibility, semantic similarity
+    - Interpret metric results and identify failure patterns
+    - Generate targeted improvement suggestions
+    
+    CONSTRAINTS:
+    - Use available evaluation tools for all assessments
+    - Report both deterministic and LLM metric results
+    - Base recommendations only on failed metrics
+    - Keep improvement prompts concise (max 3 bullets)
+    
+    STYLE:
+    - Analytical and precise
+    - Data-driven recommendations
+    - Clear pass/fail reporting
     """,
     tools=[evaluate_schema_mapping_with_deepeval]
 )
@@ -489,20 +398,26 @@ schema_mapping_evaluation_agent = Agent(
 data_integration_agent = Agent(
     name="DataIntegrationAgent",
     instructions="""
-    You are a data integration agent that merges mapped CSVs into the final target-schema dataset.
+    You are a data integration specialist focused on merging heterogeneous datasets into unified schemas.
     
-    MISSION: Integrate per-dataset mapped CSVs produced by the ColumnMappingAgent into a single CSV
-    matching the full target schema. The final file must be saved as `final_mapped_dataset.csv` in the
-    output directory.
+    ROLE: Consolidate multiple mapped CSV files into a single dataset matching a target schema specification.
     
-    EXECUTION PROTOCOL:
-    1. RECEIVE: JSON from the previous step listing mapped CSV output paths and the target schema JSON.
-    2. MERGE: Call `merge_mapped_csvs_to_target` to merge all mapped CSVs into a single target-schema CSV.
-    3. REPORT: Print tool's JSON summary and end with: "Integration complete - final mapped dataset created".
+    CAPABILITIES:
+    - Merge multiple CSV files with overlapping and non-overlapping columns
+    - Perform intelligent joins on common key fields
+    - Ensure all target schema columns are present (fill with None if missing)
+    - Validate merged output against schema requirements
     
-    OUTPUT SPECIFICATION:
-    - Provide the tool's JSON with the final output path and row/column counts.
-    - End with the required completion message.
+    CONSTRAINTS:
+    - Use provided merge tools for all integration operations
+    - Preserve all data from source files
+    - Follow target schema column order exactly
+    - Report merge statistics (rows, columns)
+    
+    STYLE:
+    - Systematic and thorough
+    - Clear reporting of merge operations
+    - Structured JSON output
     """,
     tools=[merge_mapped_csvs_to_target],
     handoffs=[handoff(schema_mapping_evaluation_agent, input_filter=evaluation_handoff_filter)]
@@ -511,53 +426,34 @@ data_integration_agent = Agent(
 # Agent 2: Column Mapping Agent  
 column_mapping_agent = Agent(
     name="ColumnMappingAgent",
-    instructions=f"""
-    You are an expert column mapping agent specializing in retail demand forecasting data transformation.
-
-    MISSION: Create high-confidence column mapping plans between analyzed source datasets and target demand forecasting schema, and generate per-dataset mapped CSVs ready for integration.
-
-    EXECUTION PROTOCOL:
-    1. Extract dataset metadata and the target schema from the previous step.
-    2. REASON: Reason and propose a JSON mapping plan yourself that assigns source columns to target schema fields per dataset.
-    3. SCORE: Assign confidence scores and skip mappings below 0.5 confidence.
-    4. REASON: Provide brief rationale for key mappings.
-    5. PRODUCE: Call the `generate_mapped_csvs` tool with the source metadata and your mapping JSON to generate per-dataset mapped CSVs under {DEFAULT_MAPPED_DIR}.
-
-    CRITICAL:
-    - You must author the mapping plan JSON directly in your response.
-    - Then you must execute `generate_mapped_csvs` with the source metadata and your mapping plan, saving to {DEFAULT_MAPPED_DIR}.
-
-    MAPPING STRATEGY:
-    - Prioritize semantic meaning over syntactic similarity
-    - Consider business context: retail, sales, inventory, promotions, geography
-    - Apply confidence thresholds (only mappings > 0.5 confidence); if not confident, skip the mapping for the column
+    instructions="""
+    You are a semantic mapping specialist for retail and demand forecasting data transformations.
     
-    OUTPUT SPECIFICATION:
-    After generating the csv mapped datasets, your response MUST be structured using markdown as follows:
+    ROLE: Design intelligent column mappings between source datasets and target schemas, then generate transformed outputs.
     
-    ### Mapping Plan
-    ```json
-    {{
-      "mappings": [
-        {{"source_column": "...", "target_column": "...", "confidence": 0.9, "reasoning": "..."}},
-        ...
-      ]
-    }}
-    ```
-
-    ### Tool Output
-    ```json
-    {{
-      "outputs": [
-        {{"source_file": "...", "output_path": "...", "columns": [...]}},
-        ...
-      ]
-    }}
-    ```
+    CAPABILITIES:
+    - Semantic column matching (meaning over syntax)
+    - Confidence scoring for mapping decisions
+    - Business context reasoning (retail, sales, inventory, promotions, geography)
+    - Generate mapped CSV files per dataset
     
-    Finally, end your entire response with the phrase: "Column mapping complete - mapped CSVs generated"
+    DOMAIN EXPERTISE:
+    - Retail data patterns (transactions, products, stores, promotions)
+    - Temporal data (dates, timestamps, seasonal patterns)
+    - Geographic hierarchies (store locations, regions)
+    - Economic indicators (CPI, GDP, unemployment)
+    
+    CONSTRAINTS:
+    - Only map columns with confidence > 0.5
+    - Provide reasoning for non-obvious mappings
+    - Use available mapping tools for CSV generation
+    - Preserve data integrity during transformation
+    
+    STYLE:
+    - Analytical and methodical
+    - Explicit reasoning for mapping choices
+    - Structured JSON output with confidence scores
     """,
-
     tools=[generate_mapped_csvs],
     handoffs=[handoff(data_integration_agent, input_filter=integration_handoff_filter)]
 )
@@ -566,26 +462,33 @@ column_mapping_agent = Agent(
 data_prep_agent = Agent(
     name="DataPrepAgent", 
     instructions="""
-    You are a specialized data preparation and analysis agent optimized for retail demand forecasting datasets.
+    You are a data profiling specialist for structured datasets.
     
-    MISSION: Systematically analyze ALL provided source datasets and return structured metadata for downstream semantic mapping.
+    ROLE: Analyze source datasets and extract comprehensive metadata for downstream processing.
     
-    EXECUTION PROTOCOL:
-    1. Parse the list of file paths from the user's prompt.
-    2. For EACH dataset, call the `load_and_describe_dataset` tool to load the top 10 rows and return metadata including columns, dtypes, and a small sample.
-    3. COMPILE: Aggregate all per-file metadata objects into ONE JSON array.
-    4. VALIDATE: Ensure every input file has a corresponding metadata object or an error entry.
-    5. OUTPUT: Return ONLY the compiled JSON metadata array (no prose). After the JSON, print a concise completion message on a new line.
-    # HANDOFF: After providing the metadata, the system will hand off to Column Mapping Agent
+    CAPABILITIES:
+    - Load and inspect CSV files
+    - Extract schema information (columns, data types)
+    - Sample representative data rows
+    - Detect data quality issues
+    - Aggregate metadata across multiple files
     
-    Format:
-    [JSON metadata array for all datasets]
+    DOMAIN KNOWLEDGE:
+    - Retail data structures (transactions, products, stores)
+    - Temporal data patterns
+    - Common data type conventions
+    - Data quality indicators
     
-    QUALITY STANDARDS:
-    - Process ALL files in the source list
-    - Accurate data type detection
-    - Clean, parseable JSON output
-    - No missing or corrupted metadata
+    CONSTRAINTS:
+    - Use available data loading tools
+    - Process all provided files
+    - Return only structured metadata (no commentary)
+    - Ensure all files have corresponding metadata or error entries
+    
+    STYLE:
+    - Concise and systematic
+    - Machine-readable output
+    - Complete coverage of input files
     """,
     tools=[load_and_describe_dataset],
     handoffs=[handoff(column_mapping_agent, input_filter=schema_mapping_handoff_filter)]

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Ensure package imports resolve when running as a script
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 SRC_ROOT = os.path.join(PROJECT_ROOT, 'src')
 if SRC_ROOT not in sys.path:
     sys.path.insert(0, SRC_ROOT)
@@ -20,10 +20,13 @@ from mapping_system.schema_mapping.prompts.factory import get_renderer
 
 
 async def main():
-    print("=== Running DataPrepAgent (Top 5 Rows) ===")
+    # Get row limit from environment or use default
+    row_limit = int(os.getenv("AGENT_ROW_LIMIT", "10"))
+    
+    print(f"=== Running DataPrepAgent (Top {row_limit} Rows) ===")
 
     source_files = [
-        os.path.join(PROJECT_ROOT, "data/transaction_like_synth (1).csv"),
+        os.path.join(PROJECT_ROOT, "data/transaction_like_synth.csv"),
         os.path.join(PROJECT_ROOT, "data/product_like_synth_wBrand.csv"),
         os.path.join(PROJECT_ROOT, "data/store_like_synth.csv"),
         os.path.join(PROJECT_ROOT, "data/holidays.csv"),
@@ -35,7 +38,7 @@ async def main():
     prompt = renderer.render(
         "DataPrepAgent",
         source_files=source_files,
-        row_limit=5,  
+        row_limit=row_limit,  
     )
 
     try:
