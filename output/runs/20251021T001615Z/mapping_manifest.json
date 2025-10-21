@@ -1,0 +1,106 @@
+{
+  "outputs": [
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/transaction_like_synth.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/transaction_like_synth_mapped.csv",
+      "columns": [
+        "date",
+        "product_id",
+        "store_id",
+        "unit_net_price",
+        "units_sold",
+        "units_ordered",
+        "beginning_inventory",
+        "promotion_active",
+        "promotional_price",
+        "seasonal_peak_months"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/product_like_synth_wBrand.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/product_like_synth_wBrand_mapped.csv",
+      "columns": [
+        "product_id",
+        "category",
+        "subcategory",
+        "product_launch_date",
+        "unit_orig_price"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/store_like_synth.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/store_like_synth_mapped.csv",
+      "columns": [
+        "store_id",
+        "store_region",
+        "store_city",
+        "store_size_sqft"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/holidays.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/holidays_mapped.csv",
+      "columns": [
+        "date",
+        "is_holiday",
+        "holiday_name"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/promotion_like_synth.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/promotion_like_synth_mapped.csv",
+      "columns": [
+        "product_id",
+        "promotion_start_date",
+        "promotion_end_date",
+        "promotional_price",
+        "unit_orig_price"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/weather_monthly.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/weather_monthly_mapped.csv",
+      "columns": [
+        "date",
+        "store_region",
+        "avg_temperature_c",
+        "precipitation_mm"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/CPI-monthly.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/CPI-monthly_mapped.csv",
+      "columns": [
+        "date",
+        "store_region",
+        "cpi_monthly"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/employment_data.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/employment_data_mapped.csv",
+      "columns": [
+        "date",
+        "store_region"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/GDP_monthly.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/GDP_monthly_mapped.csv",
+      "columns": [
+        "date",
+        "store_region",
+        "gdp_monthly"
+      ]
+    },
+    {
+      "source_file": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/Population.csv",
+      "output_path": "/Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/runs/20251021T001615Z/mapped/Population_mapped.csv",
+      "columns": [
+        "date",
+        "store_region",
+        "population_monthly"
+      ]
+    }
+  ]
+}

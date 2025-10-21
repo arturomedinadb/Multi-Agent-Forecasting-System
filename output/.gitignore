@@ -1,4 +1,0 @@
-# Ignore generated artifacts by default
-*
-!.gitignore
-!evaluations/

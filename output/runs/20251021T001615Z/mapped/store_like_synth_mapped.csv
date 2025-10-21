@@ -1,0 +1,21 @@
+store_id,store_region,store_city,store_size_sqft
+S001,New Brunswick,Vancouver,6892
+S002,PEI,Halifax,7278
+S003,New Brunswick,Montreal,8215
+S004,Nova Scotia,Quebec City,3731
+S005,Saskatchewan,Vancouver,9110
+S006,British Columbia,Toronto,8385
+S007,Nova Scotia,Halifax,8721
+S008,British Columbia,Winnipeg,9755
+S009,Alberta,Edmonton,2678
+S010,Alberta,Winnipeg,4157
+S011,Quebec,Victoria,3693
+S012,Alberta,Victoria,6592
+S013,Ontario,Toronto,2306
+S014,Newfoundland,Vancouver,6575
+S015,Newfoundland,Edmonton,1663
+S016,Saskatchewan,Quebec City,4763
+S017,Ontario,Victoria,2291
+S018,Ontario,Quebec City,1698
+S019,Quebec,Montreal,1854
+S020,Ontario,Toronto,6249
