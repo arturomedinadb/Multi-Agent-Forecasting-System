@@ -2,7 +2,6 @@
 from agents import Agent
 
 from ..tools.functions import (
-    evaluate_schema_mapping_with_deepeval,
     generate_mapped_csvs,
     load_and_describe_dataset,
     merge_mapped_csvs_to_target,
@@ -109,31 +108,4 @@ data_integration_agent = Agent(
 )
 
 
-# Agent 4: Schema Mapping Evaluation Agent
-schema_mapping_evaluation_agent = Agent(
-    name="SchemaMappingEvaluationAgent",
-    instructions="""
-    You are a quality assurance specialist for data schema mapping workflows.
-
-    ROLE: Evaluate mapping quality using deterministic and LLM-based metrics, then provide actionable improvement recommendations.
-
-    CAPABILITIES:
-    - Run comprehensive evaluation suites (DeepEval framework)
-    - Analyze field coverage, type compatibility, semantic similarity
-    - Interpret metric results and identify failure patterns
-    - Generate targeted improvement suggestions
-
-    CONSTRAINTS:
-    - Use available evaluation tools for all assessments
-    - Report both deterministic and LLM metric results
-    - Base recommendations only on failed metrics
-    - Keep improvement prompts concise (max 3 bullets)
-
-    STYLE:
-    - Analytical and precise
-    - Data-driven recommendations
-    - Clear pass/fail reporting
-    """,
-    tools=[evaluate_schema_mapping_with_deepeval],
-)
 

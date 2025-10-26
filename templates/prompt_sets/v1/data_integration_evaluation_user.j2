@@ -1,0 +1,180 @@
+# DATA INTEGRATION AGENT EVALUATION TASK
+
+## Objective
+Evaluate the Data Integration Agent's performance in consolidating multiple mapped datasets into a unified target schema, and validate the final output dataset quality.
+
+## Agent Input (Original Task)
+```
+{{ agent_input }}
+```
+
+## Agent Output (Actual Response)
+```
+{{ agent_output }}
+```
+
+## Row Count Information
+- **Source Row Count**: {{ source_row_count }}
+- **Final Row Count**: {{ final_row_count }}
+
+## Final Dataset Information
+- **Final Dataset Path**: `{{ final_dataset_path }}`
+
+## Evaluation Workflow
+
+### Step 1: RUN AGENT PERFORMANCE EVALUATION
+Call `evaluate_data_integration_agent` with the following parameters:
+```python
+evaluate_data_integration_agent(
+    agent_input={{ agent_input | tojson }},
+    agent_output={{ agent_output | tojson }},
+    source_row_count={{ source_row_count }},
+    final_row_count={{ final_row_count }}
+)
+```
+
+This will assess:
+- **Task Completion** (threshold: 0.6): Did the agent successfully merge all files?
+- **Tool Correctness** (deterministic): Were merge tools used properly?
+- **Data Quality** (threshold: 0.95): Is row count preserved after integration?
+
+**Note**: If `DEEPEVAL_API_KEY` is not set, the evaluation will return "No Deepeval API provided" for all metrics.
+
+### Step 2: VALIDATE FINAL DATASET
+Call `validate_final_dataset` to check the actual CSV file quality:
+```python
+validate_final_dataset(
+    final_dataset_path="{{ final_dataset_path }}",
+    target_schema_json={{ target_schema_json | tojson }},
+    mapping_plan_json={{ mapping_plan_json | tojson }}
+)
+```
+
+This performs comprehensive checks on the actual CSV:
+- **Field Coverage**: Are all required schema fields present?
+- **Type Compatibility**: Do data types match the target schema?
+- **Null Analysis**: Identify fields with excessive nulls (>50%)
+- **Duplicate Detection**: Check for duplicate rows on key columns
+- **Overall Data Quality**: Assessment of data integrity
+
+**Note**: This validation always runs (deterministic, no API needed).
+
+### Step 3: ANALYZE ALL RESULTS
+**Agent Performance Evaluation** returns:
+```json
+{
+  "status": "success" | "No Deepeval API provided",
+  "metrics": [
+    {"name": "Task Completion", "score": 0.85, "success": true},
+    {"name": "Tool Correctness", "score": 1.0, "success": true},
+    {"name": "Data Quality", "score": 0.98, "success": true, "details": {...}}
+  ]
+}
+```
+
+**Final Dataset Validation** returns:
+```json
+{
+  "status": "success",
+  "metrics": {
+    "field_coverage": {
+      "score": 0.95,
+      "threshold": 0.9,
+      "success": true,
+      "details": {"missing_fields": [...]}
+    },
+    "type_compatibility": {
+      "score": 1.0,
+      "threshold": 0.95,
+      "success": true,
+      "details": {"type_issues": [...]}
+    },
+    "data_quality": {
+      "row_count": 1000,
+      "duplicate_rows": 0,
+      "high_null_fields": [],
+      "success": true
+    }
+  },
+  "summary": {
+    "all_checks_passed": true,
+    "total_rows": 1000,
+    "total_columns": 33
+  }
+}
+```
+
+Combine and analyze both results.
+
+### Step 4: GENERATE SUMMARY REPORT
+Call `generate_summary_report` with ALL evaluation results:
+```python
+generate_summary_report(
+    evaluation_results_json=<combined results from steps 1 and 2>,
+    agent_name="DataIntegrationAgent"
+)
+```
+
+This invokes the **Summary Report Agent**, which:
+- Analyzes agent performance AND dataset quality
+- Explains causes of success or failure
+- Identifies data integrity issues, schema violations
+- Provides actionable improvement recommendations
+
+### Step 5: OUTPUT EVALUATION SUMMARY
+
+Structure your response as follows:
+
+---
+
+## Evaluation Results: Data Integration Agent
+
+### Agent Performance Metrics
+| Metric | Score | Threshold | Status |
+|--------|-------|-----------|--------|
+| Task Completion | [score] | [threshold] | [✅/❌] |
+| Tool Correctness | [score] | [threshold] | [✅/❌] |
+| Data Quality (Row Preservation) | [score] | [threshold] | [✅/❌] |
+
+### Final Dataset Validation Metrics
+| Metric | Score | Threshold | Status |
+|--------|-------|-----------|--------|
+| Field Coverage | [score] | [threshold] | [✅/❌] |
+| Type Compatibility | [score] | [threshold] | [✅/❌] |
+| Data Quality (Nulls/Duplicates) | [pass/fail] | N/A | [✅/❌] |
+
+### Detailed Analysis
+- **Agent Task Completion**: [Did the agent successfully merge files?]
+- **Tool Correctness**: [Were tools used properly?]
+- **Row Preservation**: [Were source rows preserved? Any data loss?]
+- **Field Coverage**: [All required fields present? Missing: ...]
+- **Type Compatibility**: [Types match schema? Issues: ...]
+- **Null Analysis**: [Any fields with >50% nulls?]
+- **Duplicate Detection**: [Any duplicate rows on key columns?]
+
+### Data Quality Summary
+- **Source Rows**: {{ source_row_count }}
+- **Final Rows**: {{ final_row_count }}
+- **Rows Preserved**: [Yes/No]
+- **Total Columns**: [from validation]
+- **Missing Fields**: [list if any]
+- **Type Mismatches**: [list if any]
+- **Duplicate Rows**: [count]
+- **High-Null Fields**: [list if any]
+
+### Summary Report
+[Include the full report generated by the Summary Report Agent]
+
+---
+
+**Notes**:
+- If DEEPEVAL_API_KEY is missing, agent performance metrics will show "skipped" with reason "No Deepeval API provided"
+- Final dataset validation ALWAYS runs (deterministic, no API needed)
+- Focus recommendations on ALL issues: agent failures + data quality + schema violations
+- Highlight any data loss, integrity concerns, missing fields, or type mismatches
+- Keep improvement suggestions specific and actionable (max 3-5 bullets)
+
+---
+
+End with: "Data Integration Agent evaluation complete"
+
