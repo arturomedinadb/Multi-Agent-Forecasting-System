@@ -1,0 +1,6 @@
+store_id,store_region,store_city,store_cluster,store_size_sqft,product_launch_date
+S001,New Brunswick,Vancouver,Compact,6892,2021-03-28
+S002,PEI,Halifax,Mall,7278,2015-07-20
+S003,New Brunswick,Montreal,Superstore,8215,2016-05-17
+S004,Nova Scotia,Quebec City,Outlet,3731,2020-03-10
+S005,Saskatchewan,Vancouver,Superstore,9110,2019-01-25

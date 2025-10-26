@@ -1,0 +1,660 @@
+[
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\transaction_like_synth.csv",
+    "shape": [
+      5,
+      14
+    ],
+    "columns": [
+      "transaction_date",
+      "prod_code",
+      "store_label",
+      "stock_level",
+      "qty_sold",
+      "qty_ordered",
+      "forecasted_demand",
+      "unit_price",
+      "discount_percent",
+      "weather_type",
+      "promo_flag",
+      "competitor_price",
+      "season",
+      "revenue"
+    ],
+    "dtypes": {
+      "transaction_date": "object",
+      "prod_code": "object",
+      "store_label": "object",
+      "stock_level": "int64",
+      "qty_sold": "int64",
+      "qty_ordered": "int64",
+      "forecasted_demand": "float64",
+      "unit_price": "float64",
+      "discount_percent": "int64",
+      "weather_type": "object",
+      "promo_flag": "int64",
+      "competitor_price": "float64",
+      "season": "object",
+      "revenue": "float64"
+    },
+    "sample": [
+      {
+        "transaction_date": "2022-07-10",
+        "prod_code": "P0029",
+        "store_label": "S039",
+        "stock_level": 50,
+        "qty_sold": 386,
+        "qty_ordered": 498,
+        "forecasted_demand": 324.8,
+        "unit_price": 62.5,
+        "discount_percent": 25,
+        "weather_type": "Sunny",
+        "promo_flag": 0,
+        "competitor_price": 74.08,
+        "season": "Winter",
+        "revenue": 18094.67
+      },
+      {
+        "transaction_date": "2022-08-01",
+        "prod_code": "P0013",
+        "store_label": "S032",
+        "stock_level": 222,
+        "qty_sold": 316,
+        "qty_ordered": 479,
+        "forecasted_demand": 340.31,
+        "unit_price": 39.04,
+        "discount_percent": 0,
+        "weather_type": "Snowy",
+        "promo_flag": 0,
+        "competitor_price": 33.83,
+        "season": "Spring",
+        "revenue": 12337.2
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\product_like_synth_wBrand.csv",
+    "shape": [
+      5,
+      7
+    ],
+    "columns": [
+      "prod_code",
+      "item_category",
+      "item_subcategory",
+      "brand_name",
+      "item_weight",
+      "launch_date",
+      "orig_price"
+    ],
+    "dtypes": {
+      "prod_code": "object",
+      "item_category": "object",
+      "item_subcategory": "object",
+      "brand_name": "object",
+      "item_weight": "float64",
+      "launch_date": "object",
+      "orig_price": "float64"
+    },
+    "sample": [
+      {
+        "prod_code": "P0001",
+        "item_category": "Electronics",
+        "item_subcategory": "Phone",
+        "brand_name": "LG",
+        "item_weight": 39.85,
+        "launch_date": "2022-11-10",
+        "orig_price": 699.0
+      },
+      {
+        "prod_code": "P0002",
+        "item_category": "Electronics",
+        "item_subcategory": "Laptop",
+        "brand_name": "LG",
+        "item_weight": 22.35,
+        "launch_date": "2020-11-26",
+        "orig_price": 999.0
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\store_like_synth.csv",
+    "shape": [
+      5,
+      6
+    ],
+    "columns": [
+      "store_label",
+      "location_region",
+      "city_name",
+      "store_format",
+      "floor_area",
+      "opening_date"
+    ],
+    "dtypes": {
+      "store_label": "object",
+      "location_region": "object",
+      "city_name": "object",
+      "store_format": "object",
+      "floor_area": "int64",
+      "opening_date": "object"
+    },
+    "sample": [
+      {
+        "store_label": "S001",
+        "location_region": "New Brunswick",
+        "city_name": "Vancouver",
+        "store_format": "Compact",
+        "floor_area": 6892,
+        "opening_date": "2021-03-28"
+      },
+      {
+        "store_label": "S002",
+        "location_region": "PEI",
+        "city_name": "Halifax",
+        "store_format": "Mall",
+        "floor_area": 7278,
+        "opening_date": "2015-07-20"
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\holidays.csv",
+    "shape": [
+      5,
+      17
+    ],
+    "columns": [
+      "date",
+      "year",
+      "month",
+      "day_of_week",
+      "is_weekend",
+      "holiday_name",
+      "holiday_type",
+      "is_public_holiday",
+      "region",
+      "is_national",
+      "holiday_effect_type",
+      "days_from_previous_holiday",
+      "days_to_next_holiday",
+      "long_weekend_flag",
+      "holiday_length_days",
+      "season",
+      "quarter"
+    ],
+    "dtypes": {
+      "date": "object",
+      "year": "int64",
+      "month": "int64",
+      "day_of_week": "object",
+      "is_weekend": "int64",
+      "holiday_name": "object",
+      "holiday_type": "object",
+      "is_public_holiday": "int64",
+      "region": "object",
+      "is_national": "int64",
+      "holiday_effect_type": "object",
+      "days_from_previous_holiday": "float64",
+      "days_to_next_holiday": "int64",
+      "long_weekend_flag": "int64",
+      "holiday_length_days": "int64",
+      "season": "object",
+      "quarter": "object"
+    },
+    "sample": [
+      {
+        "date": "01/01/2022",
+        "year": 2022,
+        "month": 1,
+        "day_of_week": "Saturday",
+        "is_weekend": 1,
+        "holiday_name": "New Year's Day",
+        "holiday_type": "Federal / National",
+        "is_public_holiday": 1,
+        "region": "ALL",
+        "is_national": 1,
+        "holiday_effect_type": "fixed-date",
+        "days_from_previous_holiday": null,
+        "days_to_next_holiday": 104,
+        "long_weekend_flag": 0,
+        "holiday_length_days": 1,
+        "season": "Winter",
+        "quarter": "Q1"
+      },
+      {
+        "date": "15/04/2022",
+        "year": 2022,
+        "month": 4,
+        "day_of_week": "Friday",
+        "is_weekend": 0,
+        "holiday_name": "Good Friday",
+        "holiday_type": "Religious / Federal",
+        "is_public_holiday": 1,
+        "region": "ALL",
+        "is_national": 1,
+        "holiday_effect_type": "floating",
+        "days_from_previous_holiday": 104.0,
+        "days_to_next_holiday": 38,
+        "long_weekend_flag": 1,
+        "holiday_length_days": 1,
+        "season": "Spring",
+        "quarter": "Q2"
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\promotion_like_synth.csv",
+    "shape": [
+      5,
+      5
+    ],
+    "columns": [
+      "prod_code",
+      "promo_start_date",
+      "promo_end_date",
+      "promo_price",
+      "orig_price"
+    ],
+    "dtypes": {
+      "prod_code": "object",
+      "promo_start_date": "object",
+      "promo_end_date": "object",
+      "promo_price": "float64",
+      "orig_price": "float64"
+    },
+    "sample": [
+      {
+        "prod_code": "P0002",
+        "promo_start_date": "2022-11-10",
+        "promo_end_date": "2022-11-25",
+        "promo_price": 870.88,
+        "orig_price": 999.0
+      },
+      {
+        "prod_code": "P0002",
+        "promo_start_date": "2023-05-19",
+        "promo_end_date": "2023-05-26",
+        "promo_price": 606.71,
+        "orig_price": 999.0
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\weather_monthly.csv",
+    "shape": [
+      5,
+      7
+    ],
+    "columns": [
+      "Date",
+      "Region",
+      "Mean Temperature",
+      "Total Precipitation (mm)",
+      "No days with precipitation 1mm or more",
+      "Heating Degree Days",
+      "Cooling Degree Days"
+    ],
+    "dtypes": {
+      "Date": "object",
+      "Region": "object",
+      "Mean Temperature": "float64",
+      "Total Precipitation (mm)": "float64",
+      "No days with precipitation 1mm or more": "float64",
+      "Heating Degree Days": "float64",
+      "Cooling Degree Days": "float64"
+    },
+    "sample": [
+      {
+        "Date": "2018-01-01",
+        "Region": "Alberta",
+        "Mean Temperature": -10.34736842105263,
+        "Total Precipitation (mm)": 12.502439024390243,
+        "No days with precipitation 1mm or more": 3.497560975609756,
+        "Heating Degree Days": 802.6885167464114,
+        "Cooling Degree Days": 0.0
+      },
+      {
+        "Date": "2018-01-01",
+        "Region": "Atlantic",
+        "Mean Temperature": -6.367256637168142,
+        "Total Precipitation (mm)": 119.61531531531531,
+        "No days with precipitation 1mm or more": 12.36036036036036,
+        "Heating Degree Days": 684.7575221238939,
+        "Cooling Degree Days": 0.0
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\CPI-monthly.csv",
+    "shape": [
+      5,
+      15
+    ],
+    "columns": [
+      "REF_DATE",
+      "GEO",
+      "DGUID",
+      "Products and product groups",
+      "UOM",
+      "UOM_ID",
+      "SCALAR_FACTOR",
+      "SCALAR_ID",
+      "VECTOR",
+      "COORDINATE",
+      "VALUE",
+      "STATUS",
+      "SYMBOL",
+      "TERMINATED",
+      "DECIMALS"
+    ],
+    "dtypes": {
+      "REF_DATE": "object",
+      "GEO": "object",
+      "DGUID": "object",
+      "Products and product groups": "object",
+      "UOM": "object",
+      "UOM_ID": "int64",
+      "SCALAR_FACTOR": "object",
+      "SCALAR_ID": "int64",
+      "VECTOR": "object",
+      "COORDINATE": "float64",
+      "VALUE": "float64",
+      "STATUS": "float64",
+      "SYMBOL": "float64",
+      "TERMINATED": "float64",
+      "DECIMALS": "int64"
+    },
+    "sample": [
+      {
+        "REF_DATE": "2015-01",
+        "GEO": "Canada",
+        "DGUID": "2016A000011124",
+        "Products and product groups": "All-items",
+        "UOM": "2002=100",
+        "UOM_ID": 17,
+        "SCALAR_FACTOR": "units",
+        "SCALAR_ID": 0,
+        "VECTOR": "v41690973",
+        "COORDINATE": 2.2,
+        "VALUE": 124.3,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 1
+      },
+      {
+        "REF_DATE": "2015-02",
+        "GEO": "Canada",
+        "DGUID": "2016A000011124",
+        "Products and product groups": "All-items",
+        "UOM": "2002=100",
+        "UOM_ID": 17,
+        "SCALAR_FACTOR": "units",
+        "SCALAR_ID": 0,
+        "VECTOR": "v41690973",
+        "COORDINATE": 2.2,
+        "VALUE": 125.4,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 1
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\employment_data.csv",
+    "shape": [
+      5,
+      19
+    ],
+    "columns": [
+      "REF_DATE",
+      "GEO",
+      "DGUID",
+      "Labour force characteristics",
+      "Gender",
+      "Age group",
+      "Statistics",
+      "Data type",
+      "UOM",
+      "UOM_ID",
+      "SCALAR_FACTOR",
+      "SCALAR_ID",
+      "VECTOR",
+      "COORDINATE",
+      "VALUE",
+      "STATUS",
+      "SYMBOL",
+      "TERMINATED",
+      "DECIMALS"
+    ],
+    "dtypes": {
+      "REF_DATE": "object",
+      "GEO": "object",
+      "DGUID": "object",
+      "Labour force characteristics": "object",
+      "Gender": "object",
+      "Age group": "object",
+      "Statistics": "object",
+      "Data type": "object",
+      "UOM": "object",
+      "UOM_ID": "int64",
+      "SCALAR_FACTOR": "object",
+      "SCALAR_ID": "int64",
+      "VECTOR": "object",
+      "COORDINATE": "object",
+      "VALUE": "float64",
+      "STATUS": "float64",
+      "SYMBOL": "float64",
+      "TERMINATED": "float64",
+      "DECIMALS": "int64"
+    },
+    "sample": [
+      {
+        "REF_DATE": "2015-01",
+        "GEO": "Canada",
+        "DGUID": "2021A000011124",
+        "Labour force characteristics": "Population",
+        "Gender": "Total - Gender",
+        "Age group": "15 years and over",
+        "Statistics": "Estimate",
+        "Data type": "Seasonally adjusted",
+        "UOM": "Persons in thousands",
+        "UOM_ID": 428,
+        "SCALAR_FACTOR": "thousands",
+        "SCALAR_ID": 3,
+        "VECTOR": "v2062809",
+        "COORDINATE": "1.1.1.1.1.1",
+        "VALUE": 28954.2,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 1
+      },
+      {
+        "REF_DATE": "2015-02",
+        "GEO": "Canada",
+        "DGUID": "2021A000011124",
+        "Labour force characteristics": "Population",
+        "Gender": "Total - Gender",
+        "Age group": "15 years and over",
+        "Statistics": "Estimate",
+        "Data type": "Seasonally adjusted",
+        "UOM": "Persons in thousands",
+        "UOM_ID": 428,
+        "SCALAR_FACTOR": "thousands",
+        "SCALAR_ID": 3,
+        "VECTOR": "v2062809",
+        "COORDINATE": "1.1.1.1.1.1",
+        "VALUE": 28965.9,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 1
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\GDP_monthly.csv",
+    "shape": [
+      5,
+      18
+    ],
+    "columns": [
+      "REF_DATE",
+      "GEO",
+      "DGUID",
+      "Seasonal adjustment",
+      "Prices",
+      "North American Industry Classification System (NAICS)",
+      "Release",
+      "UOM",
+      "UOM_ID",
+      "SCALAR_FACTOR",
+      "SCALAR_ID",
+      "VECTOR",
+      "COORDINATE",
+      "VALUE",
+      "STATUS",
+      "SYMBOL",
+      "TERMINATED",
+      "DECIMALS"
+    ],
+    "dtypes": {
+      "REF_DATE": "object",
+      "GEO": "object",
+      "DGUID": "object",
+      "Seasonal adjustment": "object",
+      "Prices": "object",
+      "North American Industry Classification System (NAICS)": "object",
+      "Release": "object",
+      "UOM": "object",
+      "UOM_ID": "int64",
+      "SCALAR_FACTOR": "object",
+      "SCALAR_ID": "int64",
+      "VECTOR": "object",
+      "COORDINATE": "object",
+      "VALUE": "int64",
+      "STATUS": "float64",
+      "SYMBOL": "float64",
+      "TERMINATED": "float64",
+      "DECIMALS": "int64"
+    },
+    "sample": [
+      {
+        "REF_DATE": "2020-01",
+        "GEO": "Canada",
+        "DGUID": "2016A000011124",
+        "Seasonal adjustment": "Seasonally adjusted at annual rates",
+        "Prices": "Chained (2017) dollars",
+        "North American Industry Classification System (NAICS)": "All industries [T001]",
+        "Release": "August 29, 2025",
+        "UOM": "Dollars",
+        "UOM_ID": 81,
+        "SCALAR_FACTOR": "millions",
+        "SCALAR_ID": 6,
+        "VECTOR": "v1775496444",
+        "COORDINATE": "1.1.1.1.127",
+        "VALUE": 2111889,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 0
+      },
+      {
+        "REF_DATE": "2020-02",
+        "GEO": "Canada",
+        "DGUID": "2016A000011124",
+        "Seasonal adjustment": "Seasonally adjusted at annual rates",
+        "Prices": "Chained (2017) dollars",
+        "North American Industry Classification System (NAICS)": "All industries [T001]",
+        "Release": "August 29, 2025",
+        "UOM": "Dollars",
+        "UOM_ID": 81,
+        "SCALAR_FACTOR": "millions",
+        "SCALAR_ID": 6,
+        "VECTOR": "v1775496444",
+        "COORDINATE": "1.1.1.1.127",
+        "VALUE": 2116239,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 0
+      }
+    ]
+  },
+  {
+    "file_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\Population.csv",
+    "shape": [
+      5,
+      14
+    ],
+    "columns": [
+      "REF_DATE",
+      "GEO",
+      "DGUID",
+      "UOM",
+      "UOM_ID",
+      "SCALAR_FACTOR",
+      "SCALAR_ID",
+      "VECTOR",
+      "COORDINATE",
+      "VALUE",
+      "STATUS",
+      "SYMBOL",
+      "TERMINATED",
+      "DECIMALS"
+    ],
+    "dtypes": {
+      "REF_DATE": "object",
+      "GEO": "object",
+      "DGUID": "object",
+      "UOM": "object",
+      "UOM_ID": "int64",
+      "SCALAR_FACTOR": "object",
+      "SCALAR_ID": "int64",
+      "VECTOR": "object",
+      "COORDINATE": "int64",
+      "VALUE": "int64",
+      "STATUS": "float64",
+      "SYMBOL": "float64",
+      "TERMINATED": "float64",
+      "DECIMALS": "int64"
+    },
+    "sample": [
+      {
+        "REF_DATE": "2015-01",
+        "GEO": "Canada",
+        "DGUID": "2016A000011124",
+        "UOM": "Persons",
+        "UOM_ID": 249,
+        "SCALAR_FACTOR": "units",
+        "SCALAR_ID": 0,
+        "VECTOR": "v1",
+        "COORDINATE": 1,
+        "VALUE": 35571043,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 0
+      },
+      {
+        "REF_DATE": "2015-04",
+        "GEO": "Canada",
+        "DGUID": "2016A000011124",
+        "UOM": "Persons",
+        "UOM_ID": 249,
+        "SCALAR_FACTOR": "units",
+        "SCALAR_ID": 0,
+        "VECTOR": "v1",
+        "COORDINATE": 1,
+        "VALUE": 35606734,
+        "STATUS": null,
+        "SYMBOL": null,
+        "TERMINATED": null,
+        "DECIMALS": 0
+      }
+    ]
+  }
+]
