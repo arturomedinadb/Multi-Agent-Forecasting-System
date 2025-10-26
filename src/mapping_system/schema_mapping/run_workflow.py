@@ -99,8 +99,6 @@ def main() -> None:
     print(f"🗂️  Mapping plan: {result.get('mapping_plan')}")
     print(f"📑 Manifest: {result.get('mapping_manifest')}")
     print(f"🧾 Source metadata: {result.get('source_metadata')}")
-    if result.get("evaluation_summary"):
-        print(f"📈 Evaluation summary: {result.get('evaluation_summary')}")
     print("\n" + "=" * 70 + "\n")
 
     sys.exit(0)

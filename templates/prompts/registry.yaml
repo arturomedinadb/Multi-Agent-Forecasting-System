@@ -11,6 +11,15 @@ DataIntegrationAgent:
   template: templates/prompt_sets/v1/integration_user.j2
   required_vars: [mapped_manifest_json, target_schema_json, output_path]
 
-SchemaMappingEvaluationAgent:
-  template: templates/prompt_sets/v1/evaluation_user.j2
-  required_vars: [final_dataset_path, mapping_plan_json, source_metadata_json, target_schema_json, config_path, output_dir]
+# Evaluation Agents for Core Agents
+DataPrepEvaluationAgent:
+  template: templates/prompt_sets/v1/data_prep_evaluation_user.j2
+  required_vars: [agent_input, agent_output, expected_files]
+
+ColumnMappingEvaluationAgent:
+  template: templates/prompt_sets/v1/column_mapping_evaluation_user.j2
+  required_vars: [agent_input, agent_output, mapping_plan_json, target_schema_json]
+
+DataIntegrationEvaluationAgent:
+  template: templates/prompt_sets/v1/data_integration_evaluation_user.j2
+  required_vars: [agent_input, agent_output, source_row_count, final_row_count, final_dataset_path, target_schema_json, mapping_plan_json]

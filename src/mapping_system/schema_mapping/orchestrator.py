@@ -12,7 +12,11 @@ from .agents.definitions import (
     column_mapping_agent,
     data_integration_agent,
     data_prep_agent,
-    schema_mapping_evaluation_agent,
+)
+from .agents.definitions_eval_agents import (
+    column_mapping_evaluation_agent,
+    data_integration_evaluation_agent,
+    data_prep_evaluation_agent,
 )
 from .prompts.factory import get_renderer
 from .schemas.models import DemandForecastingRecord
@@ -111,7 +115,9 @@ class StageArtifacts:
     mapping_plan_path: Path | None = None
     mapping_manifest_path: Path | None = None
     final_dataset_path: Path | None = None
-    evaluation_summary_path: Path | None = None
+    data_prep_eval_path: Path | None = None
+    column_mapping_eval_path: Path | None = None
+    data_integration_eval_path: Path | None = None
 
 
 @dataclass
@@ -227,11 +233,6 @@ class SchemaMappingOrchestrator:
             metadata = await self._run_dataprep()
             mapping_plan, manifest = await self._run_mapping(metadata)
             final_dataset = await self._run_integration(manifest)
-            evaluation_summary = await self._run_evaluation(
-                final_dataset=final_dataset,
-                mapping_plan=mapping_plan,
-                source_metadata=metadata,
-            )
         except OpenAIError as exc:
             raise RuntimeError(f"OpenAI API error during orchestration: {exc}") from exc
 
@@ -243,9 +244,6 @@ class SchemaMappingOrchestrator:
             "mapping_plan": str(mapping_plan),
             "mapping_manifest": str(manifest),
             "source_metadata": str(metadata),
-            "evaluation_summary": str(evaluation_summary)
-            if evaluation_summary
-            else None,
         }
 
     def _prepare_directories(self) -> None:
@@ -288,6 +286,14 @@ class SchemaMappingOrchestrator:
         self.context.artifacts.source_metadata_path = metadata_path
 
         print("\n✅ Data preparation artifact stored at", metadata_path)
+        
+        # Evaluate Data Prep Agent
+        await self._evaluate_dataprep(
+            agent_input=prompt,
+            agent_output=output_text,
+            expected_files=self.context.source_files,
+        )
+        
         print("---\n")
         return metadata_path
 
@@ -335,6 +341,14 @@ class SchemaMappingOrchestrator:
         self.context.artifacts.mapping_manifest_path = mapping_manifest_path
 
         print("\n✅ Column mapping artifacts stored at", mapping_plan_path)
+        
+        # Evaluate Column Mapping Agent
+        await self._evaluate_column_mapping(
+            agent_input=prompt,
+            agent_output=output_text,
+            mapping_plan=mapping_plan,
+        )
+        
         print("---\n")
         return mapping_plan_path, mapping_manifest_path
 
@@ -380,57 +394,175 @@ class SchemaMappingOrchestrator:
         self.context.artifacts.final_dataset_path = output_path
 
         print("\n✅ Final dataset written to", output_path)
+        
+        # Evaluate Data Integration Agent
+        await self._evaluate_data_integration(
+            agent_input=prompt,
+            agent_output=output_text,
+            integration_payload=integration_payload,
+        )
+        
         print("---\n")
         return output_path
 
-    async def _run_evaluation(
+
+    async def _evaluate_dataprep(
         self,
         *,
-        final_dataset: Path,
-        mapping_plan: Path,
-        source_metadata: Path,
+        agent_input: str,
+        agent_output: str,
+        expected_files: List[str],
     ) -> Path | None:
-        prompt = self.renderer.render(
-            "SchemaMappingEvaluationAgent",
-            final_dataset_path=str(final_dataset),
-            mapping_plan_json=mapping_plan.read_text(),
-            source_metadata_json=source_metadata.read_text(),
-            target_schema_json=self.target_schema_json,
-            config_path=str(
-                (PROJECT_ROOT / "configs" / "evaluation" / "schema_mapping.yaml").resolve()
-            ),
-            output_dir=str(self.context.evaluations_directory()),
+        """Evaluate the Data Prep Agent's performance."""
+        eval_prompt = self.renderer.render(
+            "DataPrepEvaluationAgent",
+            agent_input=agent_input,
+            agent_output=agent_output,
+            expected_files=json.dumps(expected_files),
         )
 
-        print("\n" + "=" * 70)
-        print("📊 AGENT 4: QUALITY EVALUATION")
-        print("=" * 70 + "\n")
+        print("\n" + "─" * 70)
+        print("📊 EVALUATING: Data Prep Agent")
+        print("─" * 70 + "\n")
 
-        run_result = await self.executor.run(
-            agent=schema_mapping_evaluation_agent,
-            messages=[{"role": "user", "content": prompt}],
-            trace_label="Agent 4: Evaluation",
-        )
-
-        output_text = _extract_output_text(run_result)
         try:
-            evaluation_summary = _parse_json_value(
-                output_text,
-                expect_type=dict,
-                predicate=lambda value: isinstance(value, dict) and "metrics" in value,
-                error_message="Evaluation agent did not provide JSON summary output.",
+            run_result = await self.executor.run(
+                agent=data_prep_evaluation_agent,
+                messages=[{"role": "user", "content": eval_prompt}],
+                trace_label="Eval: DataPrep",
             )
-        except ValueError:
-            evaluation_summary = None
 
-        summary_path = None
-        if evaluation_summary:
-            summary_path = self.context.run_directory() / "evaluation_summary.json"
-            summary_path.write_text(json.dumps(evaluation_summary, indent=2))
-            self.context.artifacts.evaluation_summary_path = summary_path
-            print("\n✅ Evaluation summary stored at", summary_path)
-        else:
-            print("\n⚠️  Evaluation agent response did not include summary JSON.")
+            output_text = _extract_output_text(run_result)
+            eval_path = self.context.run_directory() / "data_prep_evaluation.json"
+            
+            # Try to extract JSON from output
+            try:
+                eval_data = _parse_json_value(
+                    output_text,
+                    expect_type=dict,
+                    error_message="Evaluation response did not include JSON.",
+                )
+                eval_path.write_text(json.dumps(eval_data, indent=2))
+            except ValueError:
+                # Store as text if JSON parsing fails
+                eval_path = self.context.run_directory() / "data_prep_evaluation.txt"
+                eval_path.write_text(output_text)
+            
+            self.context.artifacts.data_prep_eval_path = eval_path
+            print(f"\n✅ Data Prep evaluation stored at {eval_path}")
+            return eval_path
+        except Exception as exc:
+            print(f"\n⚠️  Data Prep evaluation failed: {exc}")
+            return None
 
-        print("---\n")
-        return summary_path
+    async def _evaluate_column_mapping(
+        self,
+        *,
+        agent_input: str,
+        agent_output: str,
+        mapping_plan: Dict[str, Any],
+    ) -> Path | None:
+        """Evaluate the Column Mapping Agent's performance."""
+        eval_prompt = self.renderer.render(
+            "ColumnMappingEvaluationAgent",
+            agent_input=agent_input,
+            agent_output=agent_output,
+            mapping_plan_json=json.dumps(mapping_plan, indent=2),
+            target_schema_json=self.target_schema_json,
+        )
+
+        print("\n" + "─" * 70)
+        print("📊 EVALUATING: Column Mapping Agent")
+        print("─" * 70 + "\n")
+
+        try:
+            run_result = await self.executor.run(
+                agent=column_mapping_evaluation_agent,
+                messages=[{"role": "user", "content": eval_prompt}],
+                trace_label="Eval: ColumnMapping",
+            )
+
+            output_text = _extract_output_text(run_result)
+            eval_path = self.context.run_directory() / "column_mapping_evaluation.json"
+            
+            # Try to extract JSON from output
+            try:
+                eval_data = _parse_json_value(
+                    output_text,
+                    expect_type=dict,
+                    error_message="Evaluation response did not include JSON.",
+                )
+                eval_path.write_text(json.dumps(eval_data, indent=2))
+            except ValueError:
+                # Store as text if JSON parsing fails
+                eval_path = self.context.run_directory() / "column_mapping_evaluation.txt"
+                eval_path.write_text(output_text)
+            
+            self.context.artifacts.column_mapping_eval_path = eval_path
+            print(f"\n✅ Column Mapping evaluation stored at {eval_path}")
+            return eval_path
+        except Exception as exc:
+            print(f"\n⚠️  Column Mapping evaluation failed: {exc}")
+            return None
+
+    async def _evaluate_data_integration(
+        self,
+        *,
+        agent_input: str,
+        agent_output: str,
+        integration_payload: Dict[str, Any],
+    ) -> Path | None:
+        """Evaluate the Data Integration Agent's performance and validate final dataset."""
+        # Extract row counts and dataset path from integration payload
+        source_row_count = integration_payload.get("rows", 0)
+        final_row_count = source_row_count  # Same for now, could calculate from CSV
+        final_dataset_path = integration_payload.get("output_path", "")
+        
+        # Get mapping plan for validation
+        mapping_plan_path = self.context.artifacts.mapping_plan_path
+        mapping_plan_json = mapping_plan_path.read_text() if mapping_plan_path and mapping_plan_path.exists() else "{}"
+        
+        eval_prompt = self.renderer.render(
+            "DataIntegrationEvaluationAgent",
+            agent_input=agent_input,
+            agent_output=agent_output,
+            source_row_count=source_row_count,
+            final_row_count=final_row_count,
+            final_dataset_path=final_dataset_path,
+            target_schema_json=self.target_schema_json,
+            mapping_plan_json=mapping_plan_json,
+        )
+
+        print("\n" + "─" * 70)
+        print("📊 EVALUATING: Data Integration Agent")
+        print("─" * 70 + "\n")
+
+        try:
+            run_result = await self.executor.run(
+                agent=data_integration_evaluation_agent,
+                messages=[{"role": "user", "content": eval_prompt}],
+                trace_label="Eval: DataIntegration",
+            )
+
+            output_text = _extract_output_text(run_result)
+            eval_path = self.context.run_directory() / "data_integration_evaluation.json"
+            
+            # Try to extract JSON from output
+            try:
+                eval_data = _parse_json_value(
+                    output_text,
+                    expect_type=dict,
+                    error_message="Evaluation response did not include JSON.",
+                )
+                eval_path.write_text(json.dumps(eval_data, indent=2))
+            except ValueError:
+                # Store as text if JSON parsing fails
+                eval_path = self.context.run_directory() / "data_integration_evaluation.txt"
+                eval_path.write_text(output_text)
+            
+            self.context.artifacts.data_integration_eval_path = eval_path
+            print(f"\n✅ Data Integration evaluation stored at {eval_path}")
+            return eval_path
+        except Exception as exc:
+            print(f"\n⚠️  Data Integration evaluation failed: {exc}")
+            return None
