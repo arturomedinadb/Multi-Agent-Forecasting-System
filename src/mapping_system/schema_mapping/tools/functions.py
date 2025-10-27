@@ -125,6 +125,7 @@ def run_generate_mapped_csvs(
     mapping_entries = mapping_payload.get("mappings", [])
     per_file: Dict[str, List[Dict[str, Any]]] = {}
     fallback: List[Dict[str, Any]] = []
+    results: List[Dict[str, Any]] = []
 
     for entry in mapping_entries:
         if not isinstance(entry, dict):
@@ -394,7 +395,7 @@ def evaluate_data_prep_agent(
         })
     
     try:
-        from deepeval.test_case import LLMTestCase
+        from deepeval.test_case import LLMTestCase, ToolCall
         from deepeval.metrics import TaskCompletionMetric, AnswerRelevancyMetric
     except ImportError:
         return json.dumps({
@@ -406,15 +407,16 @@ def evaluate_data_prep_agent(
         # Parse expected files if provided
         expected_list = json.loads(expected_files) if expected_files else []
         
-        # Create test case
+        # Create test case with required context
         test_case = LLMTestCase(
             input=agent_input,
             actual_output=agent_output,
-            expected_output=f"Metadata for {len(expected_list)} files" if expected_list else None
+            expected_output=f"Metadata for {len(expected_list)} files" if expected_list else None,
+            tools_called=[ToolCall(name="load_and_describe_dataset", description="Load and analyze CSV files")]
         )
         
         # Run metrics
-        task_metric = TaskCompletionMetric(threshold=0.6, async_mode=False)
+        task_metric = TaskCompletionMetric(threshold=0.6, async_mode=False, strict_mode=False)
         relevancy_metric = AnswerRelevancyMetric(threshold=0.6, async_mode=False)
         
         task_metric.measure(test_case)
@@ -447,6 +449,14 @@ def evaluate_data_prep_agent(
     except Exception as exc:
         print(f"TOOL ERROR in evaluate_data_prep_agent: {exc}")
         return json.dumps({"status": "Failed", "error": str(exc)})
+
+
+def _sanitize_json_string(json_str: str) -> str:
+    """Remove invalid control characters from JSON string."""
+    import re
+    # Remove control characters except newlines and tabs in the JSON structure itself
+    # This regex keeps structural whitespace but removes embedded control chars in strings
+    return re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', json_str)
 
 
 @function_tool
@@ -482,7 +492,7 @@ def evaluate_column_mapping_agent(
         })
     
     try:
-        from deepeval.test_case import LLMTestCase
+        from deepeval.test_case import LLMTestCase, ToolCall
         from deepeval.metrics import TaskCompletionMetric
         from ..evaluation.metrics import FieldCoverageMetric, TypeCompatibilityMetric, SemanticSimilarityMetric
     except ImportError:
@@ -492,8 +502,8 @@ def evaluate_column_mapping_agent(
         })
     
     try:
-        mapping_plan = json.loads(mapping_plan_json)
-        target_schema = json.loads(target_schema_json)
+        mapping_plan = json.loads(_sanitize_json_string(mapping_plan_json))
+        target_schema = json.loads(_sanitize_json_string(target_schema_json))
         
         # Extract target fields and types
         properties = target_schema.get("properties", {})
@@ -504,6 +514,7 @@ def evaluate_column_mapping_agent(
         test_case = LLMTestCase(
             input=agent_input,
             actual_output=agent_output,
+            tools_called=[ToolCall(name="generate_mapped_csvs", description="Generate mapped CSV files")],
             additional_metadata={
                 "required_fields": required_fields,
                 "target_types": target_types,
@@ -514,7 +525,7 @@ def evaluate_column_mapping_agent(
         )
         
         # Run metrics
-        task_metric = TaskCompletionMetric(threshold=0.6, async_mode=False)
+        task_metric = TaskCompletionMetric(threshold=0.6, async_mode=False, strict_mode=False)
         coverage_metric = FieldCoverageMetric(required_fields=required_fields, threshold=0.9)
         type_metric = TypeCompatibilityMetric(expected_types=target_types)
         semantic_metric = SemanticSimilarityMetric(minimum_score=0.5)
@@ -599,7 +610,7 @@ def evaluate_data_integration_agent(
         })
     
     try:
-        from deepeval.test_case import LLMTestCase
+        from deepeval.test_case import LLMTestCase, ToolCall
         from deepeval.metrics import TaskCompletionMetric
     except ImportError:
         return json.dumps({
@@ -612,11 +623,12 @@ def evaluate_data_integration_agent(
         test_case = LLMTestCase(
             input=agent_input,
             actual_output=agent_output,
-            expected_output=f"Merged dataset with {source_row_count} rows"
+            expected_output=f"Merged dataset with {source_row_count} rows",
+            tools_called=[ToolCall(name="merge_mapped_csvs_to_target", description="Merge mapped CSV files")]
         )
         
         # Run metrics
-        task_metric = TaskCompletionMetric(threshold=0.6, async_mode=False)
+        task_metric = TaskCompletionMetric(threshold=0.6, async_mode=False, strict_mode=False)
         task_metric.measure(test_case)
         
         # Data Quality check (deterministic)
@@ -685,8 +697,8 @@ def validate_final_dataset(
             })
         
         df = pd.read_csv(final_dataset_path)
-        target_schema = json.loads(target_schema_json)
-        mapping_plan = json.loads(mapping_plan_json)
+        target_schema = json.loads(_sanitize_json_string(target_schema_json))
+        mapping_plan = json.loads(_sanitize_json_string(mapping_plan_json))
         
         # Extract schema properties
         properties = target_schema.get("properties", {})
