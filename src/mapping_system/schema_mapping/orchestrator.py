@@ -168,6 +168,22 @@ class AgentExecutor:
             return streamed
 
 
+def _truncate_for_evaluation(text: str, max_chars: int = 4000) -> str:
+    """Truncate long text for evaluation to avoid token limits."""
+    if len(text) <= max_chars:
+        return text
+    
+    # Keep first 70% and last 30% of the allowed characters
+    head_chars = int(max_chars * 0.7)
+    tail_chars = int(max_chars * 0.3)
+    
+    return (
+        text[:head_chars]
+        + f"\n\n... [TRUNCATED {len(text) - max_chars} characters] ...\n\n"
+        + text[-tail_chars:]
+    )
+
+
 def _extract_output_text(run_result: Any) -> str:
     """Best-effort extraction of final text output from a RunResult."""
     # Try final_output first (this is the correct attribute for the current SDK version)
@@ -416,8 +432,8 @@ class SchemaMappingOrchestrator:
         """Evaluate the Data Prep Agent's performance."""
         eval_prompt = self.renderer.render(
             "DataPrepEvaluationAgent",
-            agent_input=agent_input,
-            agent_output=agent_output,
+            agent_input=_truncate_for_evaluation(agent_input),
+            agent_output=_truncate_for_evaluation(agent_output),
             expected_files=json.dumps(expected_files),
         )
 
@@ -446,7 +462,7 @@ class SchemaMappingOrchestrator:
             except ValueError:
                 # Store as text if JSON parsing fails
                 eval_path = self.context.run_directory() / "data_prep_evaluation.txt"
-                eval_path.write_text(output_text)
+                eval_path.write_text(output_text, encoding='utf-8')
             
             self.context.artifacts.data_prep_eval_path = eval_path
             print(f"\n✅ Data Prep evaluation stored at {eval_path}")
@@ -463,10 +479,11 @@ class SchemaMappingOrchestrator:
         mapping_plan: Dict[str, Any],
     ) -> Path | None:
         """Evaluate the Column Mapping Agent's performance."""
+        # Don't truncate for this evaluation - we need complete JSON
         eval_prompt = self.renderer.render(
             "ColumnMappingEvaluationAgent",
-            agent_input=agent_input,
-            agent_output=agent_output,
+            agent_input=agent_input[:2000] + "..." if len(agent_input) > 2000 else agent_input,
+            agent_output=agent_output[:2000] + "..." if len(agent_output) > 2000 else agent_output,
             mapping_plan_json=json.dumps(mapping_plan, indent=2),
             target_schema_json=self.target_schema_json,
         )
@@ -496,7 +513,7 @@ class SchemaMappingOrchestrator:
             except ValueError:
                 # Store as text if JSON parsing fails
                 eval_path = self.context.run_directory() / "column_mapping_evaluation.txt"
-                eval_path.write_text(output_text)
+                eval_path.write_text(output_text, encoding='utf-8')
             
             self.context.artifacts.column_mapping_eval_path = eval_path
             print(f"\n✅ Column Mapping evaluation stored at {eval_path}")
@@ -524,8 +541,8 @@ class SchemaMappingOrchestrator:
         
         eval_prompt = self.renderer.render(
             "DataIntegrationEvaluationAgent",
-            agent_input=agent_input,
-            agent_output=agent_output,
+            agent_input=_truncate_for_evaluation(agent_input),
+            agent_output=_truncate_for_evaluation(agent_output),
             source_row_count=source_row_count,
             final_row_count=final_row_count,
             final_dataset_path=final_dataset_path,
@@ -558,7 +575,7 @@ class SchemaMappingOrchestrator:
             except ValueError:
                 # Store as text if JSON parsing fails
                 eval_path = self.context.run_directory() / "data_integration_evaluation.txt"
-                eval_path.write_text(output_text)
+                eval_path.write_text(output_text, encoding='utf-8')
             
             self.context.artifacts.data_integration_eval_path = eval_path
             print(f"\n✅ Data Integration evaluation stored at {eval_path}")
