@@ -1,0 +1,52 @@
+{
+  "mappings": [
+    {
+      "source_column": "transaction_date",
+      "target_column": "date",
+      "confidence": 0.95,
+      "reasoning": "Direct temporal field match"
+    },
+    {
+      "source_column": "prod_code",
+      "target_column": "product_id",
+      "confidence": 0.9,
+      "reasoning": "Product identifier\u2014standard retail convention"
+    },
+    {
+      "source_column": "store_label",
+      "target_column": "store_id",
+      "confidence": 0.9,
+      "reasoning": "Store identifier\u2014retail context"
+    },
+    {
+      "source_column": "qty_sold",
+      "target_column": "units_sold",
+      "confidence": 0.95,
+      "reasoning": "Direct measure of sales volume"
+    },
+    {
+      "source_column": "unit_price",
+      "target_column": "unit_net_price",
+      "confidence": 0.8,
+      "reasoning": "Standard unit price\u2014assumed as net in absence of extra info"
+    },
+    {
+      "source_column": "stock_level",
+      "target_column": "beginning_inventory",
+      "confidence": 0.8,
+      "reasoning": "Represents inventory at time of transaction, aligns with 'beginning inventory' in demand context"
+    },
+    {
+      "source_column": "qty_ordered",
+      "target_column": "units_ordered",
+      "confidence": 0.8,
+      "reasoning": "Represents ordered quantity, matches demand schema intent"
+    },
+    {
+      "source_column": "promo_flag",
+      "target_column": "promotion_active",
+      "confidence": 0.85,
+      "reasoning": "Indicates active promotion (binary flag)"
+    }
+  ]
+}

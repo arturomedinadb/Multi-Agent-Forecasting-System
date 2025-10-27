@@ -1,0 +1,18 @@
+{
+  "outputs": [
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\transaction_like_synth.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T212036Z\\mapped\\transaction_like_synth_mapped.csv",
+      "columns": [
+        "date",
+        "product_id",
+        "store_id",
+        "units_sold",
+        "unit_net_price",
+        "beginning_inventory",
+        "units_ordered",
+        "promotion_active"
+      ]
+    }
+  ]
+}
