@@ -1,0 +1,47 @@
+---
+
+## Evaluation Results: Column Mapping Agent
+
+### Metric Summary
+
+| Metric              | Score          | Threshold      | Status     |
+|---------------------|---------------|---------------|------------|
+| Task Completion     | skipped       | —             | FAIL       |
+| Tool Correctness    | skipped       | —             | FAIL       |
+| Field Coverage      | skipped       | —             | FAIL       |
+| Type Compatibility  | skipped       | —             | FAIL       |
+| Semantic Similarity | skipped       | —             | FAIL       |
+
+### Detailed Analysis
+
+- **Task Completion**: Evaluation could not be performed. The agent's output or mapping plan included a JSON formatting error (invalid control character), preventing metric analysis.
+- **Tool Correctness**: Could not be checked due to failed parsing—no determination possible on tool invocation or mapping plan compliance.
+- **Field Coverage**: No fields were evaluated—coverage undetermined because the mapping output was not properly parsed.
+- **Type Compatibility**: No compatibility checks performed—analysis blocked by input error.
+- **Semantic Similarity**: No mapping pairs compared—no results available due to parsing failure.
+
+### Key Issues
+
+- Metric Evaluation Blocked due to invalid mapping plan JSON.
+- All metrics were skipped because the agent's output could not be parsed for evaluation.
+- Actionable output cannot be determined without resolving format issues.
+
+### Summary Report
+
+#### Evaluation Summary: ColumnMappingAgent
+
+**Root Cause**: The agent’s output mapping plan included invalid characters and could not be parsed as valid JSON by the evaluation process. Specifically, there is an invalid control character at a specific location in the output, which breaks JSON integrity.
+
+**Impacts:**
+- No DeepEval metrics could be computed.
+- The full workflow failed before substantive evaluation could occur.
+- No coverage, compatibility, or semantic results can be acted upon.
+
+**Recommendations:**
+1. **Ensure Output JSON Validity**: Rigorously validate agent output with JSON schema checks prior to submitting for evaluation. Consider adding pre-evaluation linting or automated tests to catch format errors.
+2. **Implement Error Handling and Feedback**: The agent should surface errors when producing invalid mapping plans, flagging any schemas that exceed length or complexity limits that could induce such errors.
+3. **Rerun Evaluation After Fix**: Once mapping plan serialization is corrected, rerun the DeepEval evaluation to assess semantic and technical performance appropriately.
+
+---
+
+Column Mapping Agent evaluation complete

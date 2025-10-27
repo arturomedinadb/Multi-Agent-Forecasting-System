@@ -1,0 +1,44 @@
+---
+
+## Evaluation Results: Data Prep Agent
+
+### Metric Summary
+| Metric            | Score    | Threshold | Status  |
+|-------------------|----------|-----------|---------|
+| Task Completion   | skipped  | 0.6       | SKIPPED |
+| Tool Correctness  | skipped  | 1.0       | SKIPPED |
+| Answer Relevancy  | skipped  | 0.6       | SKIPPED |
+
+### Detailed Analysis
+- **Task Completion**: Not assessed. This metric, which determines whether the agent analyzed all required files and provided complete metadata extraction, could not be evaluated due to the absence of the Deepeval API.
+- **Tool Correctness**: Not assessed. The evaluation did not determine whether the Data Prep Agent correctly applied the required data loading tools, as tool metric checks require an active Deepeval API connection.
+- **Answer Relevancy**: Not assessed. The relevance and on-topic quality of the agent's output could not be judged as this also depends on the Deepeval API's evaluation.
+
+### Summary Report
+
+## Evaluation Summary Report for DataPrepAgent
+
+**1. Overall Assessment**
+
+The evaluation of the DataPrepAgent could not be performed due to the lack of a Deepeval API. This is a critical component required for the assessment process, rendering it impossible to evaluate the agent's performance on each of the metrics. As such, no conclusions can be made regarding the agent's performance at this time.
+
+**2. Metric Analysis**
+- **Task Completion**: This metric evaluates how well the agent completes a given task. However, this metric was not assessed due to the lack of the Deepeval API.
+- **Tool Correctness**: This metric measures the accuracy of the agent in using specific tools required for its tasks. Due to the absence of the Deepeval API, this metric could not be evaluated.
+- **Answer Relevancy**: This metric gauges how relevant the agent's answers are to the queries posed. The assessment could not be made due to the unavailability of the Deepeval API.
+
+**3. Success Factors**
+
+Unfortunately, no success factors could be identified in this evaluation, as all the metrics were skipped due to the absence of the Deepeval API.
+
+**4. Failure Analysis**
+
+The only failure identified in this evaluation is the lack of the necessary Deepeval API, which is a tool required for the evaluation process. Without this API, the assessment of the agent's performance could not be carried out.
+
+**5. Recommendations**
+
+In order to progress with the evaluation of DataPrepAgent, it is imperative to provide the Deepeval API. This will enable the evaluation process and provide insights into the agent's performance on the metrics of task completion, tool correctness, and answer relevancy. Once an evaluation has been completed, more specific recommendations can be made to enhance the performance of the DataPrepAgent.
+
+---
+
+Data Prep Agent evaluation complete

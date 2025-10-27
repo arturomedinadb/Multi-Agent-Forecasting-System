@@ -1,0 +1,30 @@
+---
+
+## Evaluation Results: Data Prep Agent
+
+### Metric Summary
+| Metric            | Score    | Threshold | Status           |
+|-------------------|----------|-----------|------------------|
+| Task Completion   | skipped  | 0.6       | SKIPPED          |
+| Tool Correctness  | skipped  | 1.0       | SKIPPED          |
+| Answer Relevancy  | skipped  | 0.6       | SKIPPED          |
+
+### Detailed Analysis
+- **Task Completion**: SKIPPED. The metric was not evaluated due to a tool execution error (`'tools_called' must be None or a list of ToolCall`). No assessment of whether all required files were analyzed.
+- **Tool Correctness**: SKIPPED. The tool did not run the metric, so no assessment of tool usage, error handling, or output format.
+- **Answer Relevancy**: SKIPPED. The evaluation could not determine if the output was relevant and on-topic.
+
+### Summary Report
+**The evaluation process could not execute successfully due to a system/validation error:**
+- The error message was: `'tools_called' must be None or a list of ToolCall`
+
+**No metrics were computed.**
+
+**Actionable Recommendations:**
+1. Review the implementation of the evaluation system to ensure required arguments (`tools_called`) are properly handled and populated.
+2. Validate all tool inputs and outputs to match expected interface definitions before running automated metric checks.
+3. Re-execute the evaluation once the configuration or code has been updated to resolve this validation issue.
+
+---
+
+Data Prep Agent evaluation complete

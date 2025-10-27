@@ -1,0 +1,4 @@
+seasonal_peak_months,date,holiday_name,is_holiday
+Winter,01/01/2022,New Year's Day,1
+Spring,15/04/2022,Good Friday,1
+Spring,23/05/2022,Victoria Day,1

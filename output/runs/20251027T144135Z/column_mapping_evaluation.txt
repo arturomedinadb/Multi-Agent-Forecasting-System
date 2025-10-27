@@ -1,0 +1,44 @@
+---
+
+## Evaluation Results: Column Mapping Agent
+
+### Metric Summary
+
+| Metric              | Score      | Threshold | Status                   |
+|---------------------|------------|-----------|--------------------------|
+| Task Completion     | skipped    | 0.6       | FAIL (evaluation error)  |
+| Tool Correctness    | skipped    | 1.0       | FAIL (evaluation error)  |
+| Field Coverage      | skipped    | 0.9       | FAIL (evaluation error)  |
+| Type Compatibility  | skipped    | 1.0       | FAIL (evaluation error)  |
+| Semantic Similarity | skipped    | 0.5       | FAIL (evaluation error)  |
+
+### Detailed Analysis
+- **Task Completion**: Could not evaluate due to tool execution error: `'tools_called' must be None or a list of ToolCall`. This prevented metric calculation.
+- **Tool Correctness**: Not evaluated—error encountered in metric computation mechanism.
+- **Field Coverage**: Not evaluated—metrics unavailable due to a tool invocation or integration issue.
+- **Type Compatibility**: Not evaluated—metrics unavailable due to tool-level error.
+- **Semantic Similarity**: Not evaluated—metrics unavailable as tool invocation failed.
+
+### Key Issues (if any)
+- **System/Integration Failure**: The evaluation tools could not be executed successfully due to an error in the metrics API or input structure.
+- **All metric scores marked as skipped:** No field-level, type-compatibility, or semantic similarity analysis could be completed.
+
+### Summary Report
+
+#### ColumnMappingAgent Evaluation - Diagnostic Summary
+
+**Overview:**  
+The evaluation process encountered a critical system or tool invocation error: `'tools_called' must be None or a list of ToolCall`. As a result, none of the planned DeepEval metrics (task completion, tool correctness, field coverage, type compatibility, semantic similarity) could be calculated on the provided agent output and mapping plan.
+
+#### Main Causes of Failure:
+- Technical integration error between the evaluation functions and the underlying metrics calculation framework.
+- Likely misconfiguration in the testing setup (e.g., an unexpected or missing parameter in the tool API call).
+
+#### Recommendations:
+1. **Debug Integration:** Investigate the error trace (`'tools_called' must be None or a list of ToolCall`). Ensure the evaluation call schema matches what the DeepEval API expects. Check for recent changes in tool interfaces.
+2. **Validation before Execution:** Add stricter validation or schema checking before calling the evaluation function to catch such errors earlier.
+3. **Re-run with Corrected Setup:** After resolving the integration error, re-run the evaluation to obtain actionable feedback on mapping and coverage quality.
+
+---
+
+Column Mapping Agent evaluation complete

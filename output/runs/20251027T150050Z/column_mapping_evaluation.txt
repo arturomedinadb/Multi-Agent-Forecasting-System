@@ -1,0 +1,51 @@
+---
+
+## Evaluation Results: Column Mapping Agent
+
+### Metric Summary
+| Metric               | Score          | Threshold      | Status   |
+|----------------------|---------------|---------------|----------|
+| Task Completion      | skipped       | 0.6           | SKIPPED  |
+| Tool Correctness     | skipped       | 1.0           | SKIPPED  |
+| Field Coverage       | skipped       | 0.9           | SKIPPED  |
+| Type Compatibility   | skipped       | 1.0           | SKIPPED  |
+| Semantic Similarity  | skipped       | 0.5           | SKIPPED  |
+
+### Detailed Analysis
+- **Task Completion**: Evaluation skipped due to parsing error or configuration issue (possibly missing or malformed input).
+- **Tool Correctness**: Not assessed; evaluation did not proceed. Tool use validity and output structure not verified.
+- **Field Coverage**: Not assessed; cannot determine which schema fields may be missing mappings.
+- **Type Compatibility**: Not checked; no information about mismatches between mapped and expected types.
+- **Semantic Similarity**: Not measured; cannot identify weak or strong semantic alignments in the mappings.
+
+### Key Issues
+- No DeepEval metrics computed. 
+- Cause: Parsing error encountered in core evaluation call (e.g., possibly due to incomplete input data or incorrect formatting of supplied JSONs).
+
+### Summary Report
+
+#### Column Mapping Agent - Summary Report
+
+**Status:** Evaluation failed due to input parsing error.
+
+**Root Cause:**
+- The evaluation tool was unable to process the agent's inputs due to a malformed JSON or input truncation. Parsing failed at line 8, indicating an incomplete or ill-formatted input body.
+
+**Analysis:**
+- No DeepEval metric checks were performed.
+- No data-driven insights available regarding mapping completeness, accuracy, or semantic alignment.
+
+**Recommendations:**
+1. **Ensure Input Completeness**: When submitting for evaluation, ensure that all JSON payloads (agent input, output, mapping plan, target schema) are complete and correctly formatted. Avoid truncation.
+2. **Perform Initial Syntax Validation**: Before running DeepEval, validate via a JSON linter or similar tool to catch formatting issues.
+3. **Retry Evaluation Post Correction**: Once inputs are correctly submitted, re-run the evaluation task to obtain actionable feedback on mapping quality.
+
+---
+
+**Notes**
+- All metrics skipped due to input error: "Expecting value: line 8 column 8 (char 251)".
+- Correct input format is critical for automated semantic evaluation workflows.
+
+---
+
+Column Mapping Agent evaluation complete.

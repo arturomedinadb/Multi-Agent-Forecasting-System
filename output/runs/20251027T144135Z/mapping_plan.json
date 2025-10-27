@@ -1,0 +1,70 @@
+{
+  "mappings": [
+    {
+      "source_column": "transaction_date",
+      "target_column": "date",
+      "confidence": 0.95,
+      "reasoning": "Direct temporal field match"
+    },
+    {
+      "source_column": "prod_code",
+      "target_column": "product_id",
+      "confidence": 0.9,
+      "reasoning": "Product identifier - standard retail convention"
+    },
+    {
+      "source_column": "store_label",
+      "target_column": "store_id",
+      "confidence": 0.9,
+      "reasoning": "Store identifier - standard retail convention"
+    },
+    {
+      "source_column": "stock_level",
+      "target_column": "beginning_inventory",
+      "confidence": 0.9,
+      "reasoning": "Stock level typically represents beginning inventory"
+    },
+    {
+      "source_column": "qty_sold",
+      "target_column": "units_sold",
+      "confidence": 0.95,
+      "reasoning": "qty_sold is a direct measure of units_sold"
+    },
+    {
+      "source_column": "qty_ordered",
+      "target_column": "units_ordered",
+      "confidence": 0.9,
+      "reasoning": "qty_ordered directly maps to units ordered"
+    },
+    {
+      "source_column": "unit_price",
+      "target_column": "unit_net_price",
+      "confidence": 0.9,
+      "reasoning": "unit_price represents the net price per unit"
+    },
+    {
+      "source_column": "promo_flag",
+      "target_column": "promotion_active",
+      "confidence": 0.85,
+      "reasoning": "promo_flag indicates if a promotion is active"
+    },
+    {
+      "source_column": "discount_percent",
+      "target_column": "promotional_price",
+      "confidence": 0.7,
+      "reasoning": "discount_percent is not a price, but enables calculation of promotional_price if needed; mapping as proxy"
+    },
+    {
+      "source_column": "season",
+      "target_column": "is_seasonal_product",
+      "confidence": 0.6,
+      "reasoning": "Presence of season can be used to infer a seasonal product; mapped as indicator"
+    },
+    {
+      "source_column": "revenue",
+      "target_column": "revenue",
+      "confidence": 0.55,
+      "reasoning": "Target does not have explicit revenue but including as utility if needed"
+    }
+  ]
+}

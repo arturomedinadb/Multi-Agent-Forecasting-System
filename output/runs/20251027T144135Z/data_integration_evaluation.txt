@@ -1,0 +1,73 @@
+---
+
+## Evaluation Results: Data Integration Agent
+
+### Agent Performance Metrics
+| Metric                | Score    | Threshold | Status                   |
+|-----------------------|----------|-----------|--------------------------|
+| Task Completion       | skipped  | 0.6       | FAIL (Agent tool error)  |
+| Tool Correctness      | skipped  | 1.0       | FAIL (Agent tool error)  |
+| Data Quality (Row Preservation) | skipped | 0.95      | FAIL (Agent tool error)  |
+
+> **Note:** Agent performance DeepEval metrics were skipped due to an agent tool error: `'tools_called' must be None or a list of ToolCall`. No Deepeval API results or agent-side evaluation metrics are available for this run.
+
+### Final Dataset Validation Metrics
+| Metric                       | Score   | Threshold | Status |
+|------------------------------|---------|-----------|--------|
+| Field Coverage               | 1.00    | 0.90      | PASS   |
+| Type Compatibility           | 0.1212  | 0.95      | FAIL   |
+| Data Quality (Nulls/Duplicates) | FAIL | N/A       | FAIL   |
+
+---
+
+### Detailed Analysis
+
+- **Agent Task Completion**: The agent output was received, but performance evaluation failed due to a tool configuration error. No DeepEval metrics could be produced.
+- **Tool Correctness**: Not confirmed; agent-side evaluation error prevented correctness assessment.
+- **Row Preservation**: Source and final dataset both report 3 rows (as per raw output). Data was not lost, but qualitative assessment is incomplete.
+- **Field Coverage**: All required fields (`date`, `product_id`, `store_id`) were present in the final dataset. Coverage is 100%.
+- **Type Compatibility**: There are pervasive type mismatches. 29 out of 33 fields have incompatible types (e.g., expected `string` but found `float64` or `int64`). Critical issues include:
+  - Categorical and date fields stored as `float64` (all null/NaN).
+  - Numeric fields stored as integers or floats when expected schema is `string` or union types.
+- **Null Analysis**: The majority of non-mapped columns (23 fields) have 100% null values, meaning every row for these fields is missing actual data (e.g., `is_holiday`, `holiday_name`, `seasonal_peak_months`, etc.), as no values could be derived from the source mappings.
+- **Duplicate Detection**: No duplicate rows were found (0 duplicates).
+
+---
+
+### Data Quality Summary
+
+- **Source Rows**: 3
+- **Final Rows**: 3
+- **Rows Preserved**: Yes
+- **Total Columns**: 33
+- **Missing Fields**: None (field inclusion is complete)
+- **Type Mismatches**: 29 columns (see type compatibility and list above)
+- **Duplicate Rows**: 0
+- **High-Null Fields**: 23 fields with 100% nulls
+
+---
+
+### Summary Report (Automated Agent)
+
+#### Analysis Overview
+
+The Data Integration Agent was able to merge all input rows and generate a final dataset matching the target column structure, with no row loss and complete field coverage. However, several serious data quality and schema compliance concerns are evident:
+
+- **Agent-side metric evaluation failed due to a tool parameter error**, preventing a full performance audit.
+- **Type compatibility is critically low**: Only 4 out of 33 columns have schema-compatible data types.
+- **Null columns dominate the dataset**: Over two thirds of the columns have 100% missing values, indicating either missing source data or unsuccessful mapping transformations.
+- **Possible root causes** include: overzealous column expansion from the target schema without corresponding mapped data, lack of fallback/conversion logic for nulls (e.g., mapping missing to empty string or default values), and type coercion not adhering to schema best practices.
+
+#### Actionable Recommendations
+
+1. **Fix agent-side tool handling** to ensure DeepEval metrics and proper merge tool logic are invoked.
+2. **Implement robust type mapping logic** during integration to coerce and validate data to match target types (e.g., ensure categorical fields output as strings, date fields as strings in correct format, etc.).
+3. **Populate null columns with meaningful defaults** if mapping is not available (e.g., `None`, empty string, schema default), but flag these in metadata.
+4. **Review mapping strategy** to discourage expansion of the target schema with columns that will be systematically empty or type-invalid.
+5. **Enhance post-merge validation**: Add dataset linting steps to enforce type compatibility and check for excessive null rates or unpopulated key fields.
+
+---
+
+Data Integration Agent evaluation complete
+
+---

@@ -1,0 +1,196 @@
+{
+  "mappings": [
+    {
+      "source_column": "transaction_date",
+      "target_column": "date",
+      "confidence": 0.95,
+      "reasoning": "Direct temporal field match"
+    },
+    {
+      "source_column": "prod_code",
+      "target_column": "product_id",
+      "confidence": 0.9,
+      "reasoning": "Product identifier, commonly called prod_code in retail systems"
+    },
+    {
+      "source_column": "store_label",
+      "target_column": "store_id",
+      "confidence": 0.9,
+      "reasoning": "Store identifier, a common reference like store_id"
+    },
+    {
+      "source_column": "qty_sold",
+      "target_column": "units_sold",
+      "confidence": 0.95,
+      "reasoning": "Direct synonym, qty_sold is units sold"
+    },
+    {
+      "source_column": "unit_price",
+      "target_column": "unit_net_price",
+      "confidence": 0.85,
+      "reasoning": "Represents net unit price before discounts, matches business intent"
+    },
+    {
+      "source_column": "promo_flag",
+      "target_column": "promotion_active",
+      "confidence": 0.8,
+      "reasoning": "Flag indicates promotion status for row (binary 0/1 aligns with boolean)"
+    },
+    {
+      "source_column": "discount_percent",
+      "target_column": "promotional_price",
+      "confidence": 0.6,
+      "reasoning": "Indicates discount, can be used in conjunction with unit_price; weak inference but possible mapping"
+    },
+    {
+      "source_column": "stock_level",
+      "target_column": "beginning_inventory",
+      "confidence": 0.8,
+      "reasoning": "Likely represents starting inventory for the transaction period"
+    },
+    {
+      "source_column": "qty_ordered",
+      "target_column": "units_ordered",
+      "confidence": 0.9,
+      "reasoning": "Units ordered for replenishment in transaction context"
+    },
+    {
+      "source_column": "season",
+      "target_column": "seasonal_peak_months",
+      "confidence": 0.7,
+      "reasoning": "Indicates relevant season/period for seasonality inference"
+    },
+    {
+      "source_column": "item_category",
+      "target_column": "category",
+      "confidence": 0.95,
+      "reasoning": "Product category direct mapping"
+    },
+    {
+      "source_column": "item_subcategory",
+      "target_column": "subcategory",
+      "confidence": 0.95,
+      "reasoning": "Product subcategory direct mapping"
+    },
+    {
+      "source_column": "brand_name",
+      "target_column": "brand_name",
+      "confidence": 0.9,
+      "reasoning": "Brand identity, mapped as is (kept for downstream linkage even if not in 'target' strictly)"
+    },
+    {
+      "source_column": "launch_date",
+      "target_column": "product_launch_date",
+      "confidence": 0.9,
+      "reasoning": "Product launch date matches well with target field"
+    },
+    {
+      "source_column": "orig_price",
+      "target_column": "unit_orig_price",
+      "confidence": 0.8,
+      "reasoning": "Original price for unit: standard field"
+    },
+    {
+      "source_column": "location_region",
+      "target_column": "store_region",
+      "confidence": 0.8,
+      "reasoning": "Region corresponds to the store's general area or state"
+    },
+    {
+      "source_column": "city_name",
+      "target_column": "store_city",
+      "confidence": 0.9,
+      "reasoning": "City name of the store, direct match"
+    },
+    {
+      "source_column": "floor_area",
+      "target_column": "store_size_sqft",
+      "confidence": 0.7,
+      "reasoning": "Store size, area interpreted as square feet/meters per context"
+    },
+    {
+      "source_column": "date",
+      "target_column": "date",
+      "confidence": 1.0,
+      "reasoning": "Exact match"
+    },
+    {
+      "source_column": "holiday_name",
+      "target_column": "holiday_name",
+      "confidence": 1.0,
+      "reasoning": "Holiday label direct mapping"
+    },
+    {
+      "source_column": "is_public_holiday",
+      "target_column": "is_holiday",
+      "confidence": 0.9,
+      "reasoning": "Binary indicator for public holiday fit 'is_holiday' Boolean field"
+    },
+    {
+      "source_column": "promo_start_date",
+      "target_column": "promotion_start_date",
+      "confidence": 0.95,
+      "reasoning": "Promotion period start, direct temporal alignment"
+    },
+    {
+      "source_column": "promo_end_date",
+      "target_column": "promotion_end_date",
+      "confidence": 0.95,
+      "reasoning": "Promotion period end, direct temporal alignment"
+    },
+    {
+      "source_column": "promo_price",
+      "target_column": "promotional_price",
+      "confidence": 0.9,
+      "reasoning": "Price during promotion, business equivalent to promotional_price"
+    },
+    {
+      "source_column": "Mean Temperature",
+      "target_column": "avg_temperature_c",
+      "confidence": 0.95,
+      "reasoning": "Direct calculation \u2013 mean temperature represents avg temp"
+    },
+    {
+      "source_column": "Total Precipitation (mm)",
+      "target_column": "precipitation_mm",
+      "confidence": 0.95,
+      "reasoning": "Exact match on precipitation units and period"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "cpi_monthly",
+      "confidence": 0.9,
+      "reasoning": "VALUE in CPI dataset is month-level CPI index"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "unemployment_rate_monthly",
+      "confidence": 0.9,
+      "reasoning": "VALUE (with labor force context) is unemployment or other rate, inferred from employment dataset"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "population_monthly",
+      "confidence": 0.9,
+      "reasoning": "VALUE (with population context) is total population for the period"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "gdp_monthly",
+      "confidence": 0.9,
+      "reasoning": "VALUE (with GDP dataset context) is monthly GDP; standard"
+    },
+    {
+      "source_column": "REF_DATE",
+      "target_column": "date",
+      "confidence": 0.85,
+      "reasoning": "Period field in government statistics, month-level date"
+    },
+    {
+      "source_column": "GEO",
+      "target_column": "store_country",
+      "confidence": 0.75,
+      "reasoning": "Country or national region for contextual reference (e.g., in Canada datasets)"
+    }
+  ]
+}

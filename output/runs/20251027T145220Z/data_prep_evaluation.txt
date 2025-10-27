@@ -1,0 +1,37 @@
+---
+
+## Evaluation Results: Data Prep Agent
+
+### Metric Summary
+| Metric             | Score | Threshold | Status |
+|--------------------|-------|-----------|--------|
+| Task Completion    | skipped | 0.6     | FAIL   |
+| Tool Correctness   | skipped | 1.0     | FAIL   |
+| Answer Relevancy   | skipped | 0.6     | FAIL   |
+
+### Detailed Analysis
+- **Task Completion**: Evaluation could not be completed due to a missing required parameter (`tools_called`). As a result, the metric could not be scored, and task coverage, file processing, and error handling were not assessed.
+- **Tool Correctness**: Metric was skipped for the same technical reason (`tools_called` missing), so no deterministic validation of tool usage or output structure was executed.
+- **Answer Relevancy**: This metric also could not be established because the prerequisite evaluation step failed.
+
+### Summary Report
+
+#### DataPrepAgent Evaluation Summary
+
+**Overall Status**: Evaluation Failed
+
+**Root Cause**:
+- The evaluation failed to proceed because the required parameter `'tools_called'` was not provided to the evaluation function. This prevented DeepEval from checking all scoring metrics (Task Completion, Tool Correctness, Answer Relevancy).
+
+**Consequences**:
+- No detailed feedback on the agent’s actual performance is available from this run.
+- No pass/fail status for the core quality dimensions can be determined.
+
+**Recommendations**:
+1. **Ensure Agent Workflow Instrumentation**: Modify the data preparation workflow or evaluation wrapper to capture and submit the `tools_called` list (or equivalent tool execution logs) for each agent run.
+2. **Retry DeepEval After Fixes**: Rerun the evaluation with the proper `tools_called` parameter populated to enable metric calculations and actionable insights.
+3. **Validate Evaluation Setup**: Before executing the full evaluation, verify that all preconditions (API keys, parameters, and log tracking) are met to avoid future skipped or failed assessments.
+
+---
+
+Data Prep Agent evaluation complete

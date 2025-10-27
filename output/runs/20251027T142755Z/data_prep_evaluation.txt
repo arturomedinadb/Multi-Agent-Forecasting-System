@@ -1,0 +1,30 @@
+---
+
+## Evaluation Results: Data Prep Agent
+
+### Metric Summary
+| Metric            | Score | Threshold | Status |
+|-------------------|-------|-----------|--------|
+| Task Completion   | N/A   | 0.6       | FAIL   |
+| Tool Correctness  | N/A   | 1.0       | FAIL   |
+| Answer Relevancy  | N/A   | 0.6       | FAIL   |
+
+### Detailed Analysis
+- **Task Completion**: Evaluation could not be completed due to a configuration or schema error in the evaluation tool (`'tools_called' must be None or a list of ToolCall`). As a result, task completion could not be scored and is marked as FAIL for transparency.
+- **Tool Correctness**: The evaluation process failed before tool correctness could be scored. This is typically caused by misformatted or missing tool call information in the proposition passed to the evaluator.
+- **Answer Relevancy**: The answer relevancy metric could not be processed, as the evaluation failed due to the above error.
+
+### Summary Report
+#### Evaluation Summary – DataPrepAgent
+
+- The evaluation did not proceed as intended due to an internal error in the metric assessment call. The root cause (`'tools_called' must be None or a list of ToolCall`) indicates an issue with how the agent's output or tool invocations were structured or logged.
+- No metric results were generated; thus, no direct insight is available regarding file coverage, adherence to output schema, or tool invocation correctness.
+
+#### Recommendations for Improvement
+1. **Review Tool Call Logging**: Ensure all required output fields—including tool invocations (`tools_called`)—are provided in the expected format so automated QA tools can parse and assess the agent's behavior.
+2. **Validate Evaluation Pipeline**: Before submitting for evaluation, test the agent output and environment against the evaluation harness to catch misconfigurations or schema mismatches.
+3. **Error Transparency**: If unable to collect certain metrics due to runtime or schema errors, surface a clear error message within the agent output, and (if possible) output minimal metadata so human QA can still verify partial success.
+
+---
+
+Data Prep Agent evaluation complete

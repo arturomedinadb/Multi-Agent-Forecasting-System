@@ -1,0 +1,102 @@
+{
+  "outputs": [
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\transaction_like_synth.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\transaction_like_synth_mapped.csv",
+      "columns": [
+        "transaction_date",
+        "prod_code",
+        "store_label",
+        "qty_sold",
+        "qty_ordered",
+        "stock_level",
+        "unit_price",
+        "discount_percent",
+        "promo_flag",
+        "competitor_price",
+        "season",
+        "revenue"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\product_like_synth_wBrand.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\product_like_synth_wBrand_mapped.csv",
+      "columns": [
+        "prod_code",
+        "item_category",
+        "item_subcategory",
+        "launch_date",
+        "orig_price"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\store_like_synth.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\store_like_synth_mapped.csv",
+      "columns": [
+        "store_label",
+        "location_region",
+        "city_name",
+        "floor_area",
+        "opening_date"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\holidays.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\holidays_mapped.csv",
+      "columns": [
+        "holiday_name",
+        "is_public_holiday",
+        "season",
+        "region"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\promotion_like_synth.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\promotion_like_synth_mapped.csv",
+      "columns": [
+        "prod_code",
+        "promo_start_date",
+        "promo_end_date",
+        "promo_price",
+        "orig_price"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\weather_monthly.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\weather_monthly_mapped.csv",
+      "columns": [
+        "Date",
+        "Region",
+        "Mean Temperature",
+        "Total Precipitation (mm)"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\CPI-monthly.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\CPI-monthly_mapped.csv",
+      "columns": [
+        "REF_DATE",
+        "GEO",
+        "VALUE"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\GDP_monthly.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\GDP_monthly_mapped.csv",
+      "columns": [
+        "REF_DATE",
+        "GEO",
+        "VALUE"
+      ]
+    },
+    {
+      "source_file": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\data\\Population.csv",
+      "output_path": "C:\\Users\\Artur\\OneDrive\\Documentos\\GitHub\\End-To-End-AI-Forecasting-Agent\\output\\runs\\20251027T150050Z\\mapped\\Population_mapped.csv",
+      "columns": [
+        "REF_DATE",
+        "GEO",
+        "VALUE"
+      ]
+    }
+  ]
+}

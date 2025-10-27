@@ -1,0 +1,4 @@
+is_seasonal_product,date,is_holiday,holiday_name,is_retail_holiday,school_holiday_flag,season
+Winter,01/01/2022,1,New Year's Day,Federal / National,0,Winter
+Spring,15/04/2022,1,Good Friday,Religious / Federal,1,Spring
+Spring,23/05/2022,1,Victoria Day,Federal / National,1,Spring

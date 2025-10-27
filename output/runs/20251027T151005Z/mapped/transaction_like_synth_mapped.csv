@@ -1,0 +1,4 @@
+date,product_id,store_id,units_sold,units_ordered,unit_net_price,promotion_active,promotional_price,beginning_inventory,is_seasonal_product,seasonal_peak_months
+2022-07-10,P0029,S039,386,498,62.5,0,74.08,50,Winter,Winter
+2022-08-01,P0013,S032,316,479,39.04,0,33.83,222,Spring,Spring
+2022-05-24,P0014,S015,0,184,66.48,1,76.86,464,Winter,Winter
