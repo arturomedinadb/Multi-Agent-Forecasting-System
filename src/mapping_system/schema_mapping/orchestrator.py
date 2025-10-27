@@ -118,6 +118,7 @@ class StageArtifacts:
     data_prep_eval_path: Path | None = None
     column_mapping_eval_path: Path | None = None
     data_integration_eval_path: Path | None = None
+    source_total_rows: int = 0  # Total rows from all source CSVs
 
 
 @dataclass
@@ -296,6 +297,17 @@ class SchemaMappingOrchestrator:
             expect_type=list,
             error_message="DataPrep agent output did not include metadata JSON.",
         )
+
+        # Calculate total source rows for row preservation tracking
+        total_source_rows = 0
+        for file_meta in metadata:
+            if isinstance(file_meta, dict) and "shape" in file_meta:
+                shape = file_meta["shape"]
+                if isinstance(shape, list) and len(shape) >= 1:
+                    total_source_rows += shape[0]  # shape[0] is row count
+        
+        self.context.artifacts.source_total_rows = total_source_rows
+        print(f"📊 Total source rows across all files: {total_source_rows}")
 
         metadata_path = self.context.run_directory() / "source_metadata.json"
         metadata_path.write_text(json.dumps(metadata, indent=2))
@@ -530,9 +542,9 @@ class SchemaMappingOrchestrator:
         integration_payload: Dict[str, Any],
     ) -> Path | None:
         """Evaluate the Data Integration Agent's performance and validate final dataset."""
-        # Extract row counts and dataset path from integration payload
-        source_row_count = integration_payload.get("rows", 0)
-        final_row_count = source_row_count  # Same for now, could calculate from CSV
+        # Get actual source and final row counts for proper row preservation check
+        source_row_count = self.context.artifacts.source_total_rows
+        final_row_count = integration_payload.get("rows", 0)
         final_dataset_path = integration_payload.get("output_path", "")
         
         # Get mapping plan for validation
