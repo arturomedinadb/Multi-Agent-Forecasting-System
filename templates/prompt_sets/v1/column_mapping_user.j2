@@ -29,6 +29,16 @@ Assign confidence scores (0.0-1.0) to each mapping:
 
 ### 3. CREATE MAPPING PLAN
 Generate a JSON mapping plan with this structure:
+
+**JSON FORMATTING RULES - STRICTLY ENFORCE:**
+- Use ONLY double quotes (") for all strings, never single quotes (')
+- NO trailing commas after last array/object element
+- NO comments (//) anywhere in JSON
+- NO unescaped quotes inside strings
+- Escape special characters properly: \" \\ \n \t
+- Each reasoning string must be on a single line (no line breaks inside strings)
+- Validate JSON structure before submitting to tool
+
 ```json
 {
   "mappings": [
@@ -48,7 +58,9 @@ Generate a JSON mapping plan with this structure:
 }
 ```
 
-**CRITICAL**: Only include mappings with confidence > 0.5
+**CRITICAL**: 
+- Only include mappings with confidence > 0.5
+- Ensure JSON is 100% valid before calling generate_mapped_csvs tool
 
 ### 4. GENERATE MAPPED CSVs
 Call `generate_mapped_csvs` with:
