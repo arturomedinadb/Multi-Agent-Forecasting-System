@@ -47,6 +47,7 @@ data_prep_agent = Agent(
 # Agent 2: Column Mapping Agent
 column_mapping_agent = Agent(
     name="ColumnMappingAgent",
+    model="gpt-4o",  # Using gpt-4o for better JSON formatting
     instructions="""
     You are a semantic mapping specialist for retail and demand forecasting data transformations.
 
@@ -63,6 +64,17 @@ column_mapping_agent = Agent(
     - Temporal data (dates, timestamps, seasonal patterns)
     - Geographic hierarchies (store locations, regions)
     - Economic indicators (CPI, GDP, unemployment)
+
+    JSON OUTPUT REQUIREMENTS (CRITICAL - READ CAREFULLY):
+    - ALL JSON must be STRICTLY valid with proper escaping
+    - Use ONLY double quotes (") for strings, never single quotes (')
+    - NO trailing commas in objects or arrays
+    - NO comments (//) anywhere in JSON structures
+    - NO line breaks inside string values
+    - Escape special characters properly: \" for quotes, \\ for backslash, \n for newline
+    - All reasoning strings MUST be single-line text
+    - Validate JSON structure before submitting to any tool
+    - If you have forward slashes in text, they do NOT need escaping in JSON
 
     CONSTRAINTS:
     - Only map columns with confidence > 0.5
