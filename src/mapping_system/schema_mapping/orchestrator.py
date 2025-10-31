@@ -88,25 +88,45 @@ def _parse_json_value(
         expected_tuple = tuple(expected) if expected else ()
 
     decoder = json.JSONDecoder()
+    
+    # Debug: Track what we found
+    debug_info = []
 
-    for candidate in candidates:
+    for idx, candidate in enumerate(candidates):
         candidate = candidate.strip()
         if not candidate:
             continue
         try:
             value = json.loads(candidate)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            debug_info.append(f"Candidate {idx}: JSON parse failed - {str(e)[:100]}")
             try:
                 value, _ = decoder.raw_decode(candidate)
             except json.JSONDecodeError:
                 continue
+        
+        # Check if it's the right type
         if expected_tuple and not isinstance(value, expected_tuple):
+            debug_info.append(f"Candidate {idx}: Wrong type - got {type(value).__name__}, expected {expected_tuple}")
             continue
+        
+        # Check if it matches the predicate
         if predicate and not predicate(value):
+            if isinstance(value, dict):
+                keys = list(value.keys())[:5]  # First 5 keys for debug
+                debug_info.append(f"Candidate {idx}: Predicate failed - dict with keys {keys}")
+            else:
+                debug_info.append(f"Candidate {idx}: Predicate failed")
             continue
+        
+        # Found a match!
         return value
 
-    raise ValueError(error_message or "Unable to parse expected JSON payload.")
+    # No match found - provide debug info
+    error_msg = error_message or "Unable to parse expected JSON payload."
+    if debug_info:
+        error_msg += f"\n[DEBUG] Candidates checked: {len(candidates)}\n" + "\n".join(debug_info)
+    raise ValueError(error_msg)
 
 
 @dataclass
@@ -158,14 +178,19 @@ class AgentExecutor:
 
         with trace(trace_label):
             streamed = Runner.run_streamed(agent, input=list(messages))
+            collected_text = []  # Collect all text deltas for complete output
             async for event in streamed.stream_events():
                 if not isinstance(event, RawResponsesStreamEvent):
                     continue
                 payload = event.data
                 if isinstance(payload, ResponseTextDeltaEvent):
                     print(payload.delta, end="", flush=True)
+                    collected_text.append(payload.delta)  # Store the text
                 elif isinstance(payload, ResponseContentPartDoneEvent):
                     print()
+            
+            # Store collected text for later retrieval
+            streamed._collected_full_output = "".join(collected_text)
             return streamed
 
 
@@ -187,7 +212,12 @@ def _truncate_for_evaluation(text: str, max_chars: int = 4000) -> str:
 
 def _extract_output_text(run_result: Any) -> str:
     """Best-effort extraction of final text output from a RunResult."""
-    # Try final_output first (this is the correct attribute for the current SDK version)
+    # Try our collected text first (includes pre-tool-call content)
+    collected = getattr(run_result, "_collected_full_output", None)
+    if collected:
+        return str(collected)
+    
+    # Try final_output (this is the correct attribute for the current SDK version)
     final_output = getattr(run_result, "final_output", None)
     if final_output:
         return str(final_output)
@@ -345,6 +375,13 @@ class SchemaMappingOrchestrator:
         )
 
         output_text = _extract_output_text(run_result)
+        
+        # Debug: Save the raw output to check what we're getting
+        debug_output_path = self.context.run_directory() / "column_mapping_raw_output.txt"
+        debug_output_path.write_text(output_text, encoding='utf-8')
+        print(f"[DEBUG] Raw output saved to: {debug_output_path}")
+        print(f"[DEBUG] Output length: {len(output_text)} characters")
+        
         mapping_plan = _parse_json_value(
             output_text,
             expect_type=dict,

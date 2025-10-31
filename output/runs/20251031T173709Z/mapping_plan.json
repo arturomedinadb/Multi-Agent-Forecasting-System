@@ -1,0 +1,220 @@
+{
+  "mappings": [
+    {
+      "source_column": "transaction_date",
+      "target_column": "date",
+      "confidence": 0.95,
+      "reasoning": "Direct temporal field match for transactional granularity"
+    },
+    {
+      "source_column": "prod_code",
+      "target_column": "product_id",
+      "confidence": 0.9,
+      "reasoning": "Standard product identifier in retail datasets"
+    },
+    {
+      "source_column": "store_label",
+      "target_column": "store_id",
+      "confidence": 0.9,
+      "reasoning": "Store identifier to store_id; industry convention"
+    },
+    {
+      "source_column": "qty_sold",
+      "target_column": "units_sold",
+      "confidence": 0.95,
+      "reasoning": "Quantity sold directly reflects units sold"
+    },
+    {
+      "source_column": "unit_price",
+      "target_column": "unit_net_price",
+      "confidence": 0.8,
+      "reasoning": "Net price per sold unit if discounts applied separately"
+    },
+    {
+      "source_column": "discount_percent",
+      "target_column": "promotional_price",
+      "confidence": 0.7,
+      "reasoning": "Discount percent can calculate promotional price (requires further transformation)"
+    },
+    {
+      "source_column": "promo_flag",
+      "target_column": "promotion_active",
+      "confidence": 0.9,
+      "reasoning": "Boolean field indicating if promotion is active for that row"
+    },
+    {
+      "source_column": "stock_level",
+      "target_column": "beginning_inventory",
+      "confidence": 0.7,
+      "reasoning": "Stock level can be used as the start-of-day/week inventory, which is beginning inventory"
+    },
+    {
+      "source_column": "qty_ordered",
+      "target_column": "units_ordered",
+      "confidence": 0.95,
+      "reasoning": "Direct correspondence in meaning between qty_ordered and units ordered by store"
+    },
+    {
+      "source_column": "season",
+      "target_column": "is_seasonal_product",
+      "confidence": 0.6,
+      "reasoning": "Seasonal context: season field relates to product's seasonal aspect, needs further business logic"
+    },
+    {
+      "source_column": "item_category",
+      "target_column": "category",
+      "confidence": 0.95,
+      "reasoning": "Category field for product classification"
+    },
+    {
+      "source_column": "item_subcategory",
+      "target_column": "subcategory",
+      "confidence": 0.95,
+      "reasoning": "Subcategory field for product classification"
+    },
+    {
+      "source_column": "brand_name",
+      "target_column": "brand_name",
+      "confidence": 0.8,
+      "reasoning": "No exact field in target, but business value for downstream use"
+    },
+    {
+      "source_column": "launch_date",
+      "target_column": "product_launch_date",
+      "confidence": 0.95,
+      "reasoning": "Direct match for when the product was launched in the market"
+    },
+    {
+      "source_column": "orig_price",
+      "target_column": "unit_orig_price",
+      "confidence": 0.9,
+      "reasoning": "Original price of the product maps well to unit_orig_price"
+    },
+    {
+      "source_column": "location_region",
+      "target_column": "store_region",
+      "confidence": 0.9,
+      "reasoning": "Location region as store's regional descriptor"
+    },
+    {
+      "source_column": "city_name",
+      "target_column": "store_city",
+      "confidence": 0.95,
+      "reasoning": "City name direct mapping to store_city"
+    },
+    {
+      "source_column": "store_format",
+      "target_column": "store_cluster",
+      "confidence": 0.8,
+      "reasoning": "Store format as a proxy for cluster/grouping of stores"
+    },
+    {
+      "source_column": "floor_area",
+      "target_column": "store_size_sqft",
+      "confidence": 0.7,
+      "reasoning": "Floor area represents store size in square feet"
+    },
+    {
+      "source_column": "opening_date",
+      "target_column": "store_open_date",
+      "confidence": 0.7,
+      "reasoning": "Opening date as store open date, not present in target but business logic allows retention"
+    },
+    {
+      "source_column": "date",
+      "target_column": "date",
+      "confidence": 1.0,
+      "reasoning": "Direct match for holiday and macro datasets"
+    },
+    {
+      "source_column": "holiday_name",
+      "target_column": "holiday_name",
+      "confidence": 1.0,
+      "reasoning": "Direct holiday name mapping"
+    },
+    {
+      "source_column": "is_public_holiday",
+      "target_column": "is_holiday",
+      "confidence": 1.0,
+      "reasoning": "Public holiday boolean maps directly"
+    },
+    {
+      "source_column": "holiday_type",
+      "target_column": "is_retail_holiday",
+      "confidence": 0.7,
+      "reasoning": "Retail holiday may be inferred from type ('Federal / National', etc.)"
+    },
+    {
+      "source_column": "long_weekend_flag",
+      "target_column": "school_holiday_flag",
+      "confidence": 0.6,
+      "reasoning": "Some long weekends correspond to school holidays; partial semantic overlap"
+    },
+    {
+      "source_column": "promo_start_date",
+      "target_column": "promotion_start_date",
+      "confidence": 1.0,
+      "reasoning": "Direct correspondence: promotion period start"
+    },
+    {
+      "source_column": "promo_end_date",
+      "target_column": "promotion_end_date",
+      "confidence": 1.0,
+      "reasoning": "Direct correspondence: promotion period end"
+    },
+    {
+      "source_column": "promo_price",
+      "target_column": "promotional_price",
+      "confidence": 0.95,
+      "reasoning": "Promo price as advertised maps directly to promotional_price"
+    },
+    {
+      "source_column": "Date",
+      "target_column": "date",
+      "confidence": 0.95,
+      "reasoning": "Weather and macro datasets use 'Date', equivalent to date"
+    },
+    {
+      "source_column": "Region",
+      "target_column": "store_region",
+      "confidence": 0.7,
+      "reasoning": "Region roughly corresponds to retail store region (assumes pre-joined data)"
+    },
+    {
+      "source_column": "Mean Temperature",
+      "target_column": "avg_temperature_c",
+      "confidence": 1.0,
+      "reasoning": "Mean temperature is the average temperature as required by target"
+    },
+    {
+      "source_column": "Total Precipitation (mm)",
+      "target_column": "precipitation_mm",
+      "confidence": 1.0,
+      "reasoning": "Direct match for aggregate precipitation measurement"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "cpi_monthly",
+      "confidence": 0.9,
+      "reasoning": "In CPI dataset, VALUE field represents Consumer Price Index; high semantic alignment"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "unemployment_rate_monthly",
+      "confidence": 0.8,
+      "reasoning": "In Employment dataset, VALUE is unemployment value; strong contextual fit"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "gdp_monthly",
+      "confidence": 0.9,
+      "reasoning": "In GDP dataset, VALUE field is GDP for the month"
+    },
+    {
+      "source_column": "VALUE",
+      "target_column": "population_monthly",
+      "confidence": 0.9,
+      "reasoning": "In Population dataset, VALUE is population estimate for the month"
+    }
+  ]
+}

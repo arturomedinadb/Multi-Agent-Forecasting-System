@@ -1,4 +1,4 @@
 date,product_id,store_id,is_holiday,holiday_name,is_retail_holiday,school_holiday_flag,unit_net_price,units_sold,promotional_price,promotion_active,promotion_start_date,promotion_end_date,category,subcategory,product_launch_date,unit_orig_price,is_seasonal_product,seasonal_peak_months,store_cluster,store_size_sqft,store_city,store_state,store_country,store_region,beginning_inventory,units_ordered,avg_temperature_c,precipitation_mm,unemployment_rate_monthly,population_monthly,cpi_monthly,gdp_monthly
-2022-07-10,P0029,S039,,,,,62.5,386,,0,,,,,,,,,,,,,,,50,498,,,,,,
-2022-08-01,P0013,S032,,,,,39.04,316,,0,,,,,,,,,,,,,,,222,479,,,,,,
-2022-05-24,P0014,S015,,,,,66.48,0,,1,,,,,,,,,,,,,,,464,184,,,,,,
+2022-07-10,P0029,S039,,,,,62.5,386,,,,,,,,,,,,,,,,,50,498,,,,,,
+2022-08-01,P0013,S032,,,,,39.04,316,,,,,,,,,,,,,,,,,222,479,,,,,,
+2022-05-24,P0014,S015,,,,,66.48,0,,,,,,,,,,,,,,,,,464,184,,,,,,

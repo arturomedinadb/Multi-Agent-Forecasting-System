@@ -1,0 +1,4 @@
+product_id,category,subcategory,product_launch_date,unit_orig_price
+P0001,Electronics,Phone,2022-11-10,699.0
+P0002,Electronics,Laptop,2020-11-26,999.0
+P0003,Electronics,Tablet,2022-05-21,399.0
