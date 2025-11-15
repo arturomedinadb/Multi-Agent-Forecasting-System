@@ -7,12 +7,9 @@ import pandas as pd
 
 from agents import function_tool
 from ..schemas.models import DemandForecastingRecord, ColumnMapping, MappingResult
-from ..evaluation import run_schema_mapping_evaluation
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_EVALUATION_CONFIG = PROJECT_ROOT / "configs" / "evaluation" / "schema_mapping.yaml"
-DEFAULT_EVALUATION_OUTPUT = PROJECT_ROOT / "output" / "evaluations"
 
 
 # === Helper Functions ===
@@ -114,10 +111,26 @@ def run_generate_mapped_csvs(
     Takes source metadata and mapping plan, generates per-dataset mapped CSVs.
     Used by both the @function_tool wrapper and handoff filters.
     """
+    def _ensure_mapping_dict(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, dict):
+            return payload
+        if isinstance(payload, list):
+            # LLM sometimes sends bare list instead of {"mappings": [...]}
+            return {"mappings": payload}
+        # Attempt to coerce JSON strings recursively
+        if isinstance(payload, str):
+            try:
+                parsed = json.loads(payload)
+                return _ensure_mapping_dict(parsed)
+            except json.JSONDecodeError:
+                return {"mappings": []}
+        return {"mappings": []}
+
     try:
         os.makedirs(output_dir, exist_ok=True)
         source_meta = json.loads(source_metadata_json) or []
-        mapping_payload = json.loads(mappings_json) or {}
+        raw_mappings = json.loads(mappings_json)
+        mapping_payload = _ensure_mapping_dict(raw_mappings)
     except Exception as e:
         print(f"TOOL ERROR in generate_mapped_csvs: Invalid JSON input - {e}")
         return json.dumps({"outputs": [], "error": f"Invalid JSON input: {e}"})
@@ -202,48 +215,6 @@ def run_generate_mapped_csvs(
 
     print(f"TOOL: Wrote {len(results)} mapped CSVs to {output_dir}")
     return json.dumps({"outputs": results})
-
-
-def run_schema_mapping_deepeval(
-    *,
-    final_dataset_path: str,
-    mapping_plan_json: str,
-    source_metadata_json: str,
-    target_schema_json: str,
-    config_path: Optional[str] = None,
-    output_dir: Optional[str] = None,
-) -> Dict[str, Any]:
-    mapping_plan = _load_json_payload(mapping_plan_json)
-    source_metadata = _load_json_payload(source_metadata_json)
-    target_schema = _load_json_payload(target_schema_json)
-
-    if not isinstance(mapping_plan, dict):
-        raise ValueError("mapping_plan_json must decode to a JSON object")
-    if not isinstance(source_metadata, list):
-        raise ValueError("source_metadata_json must decode to a JSON array")
-    if not isinstance(target_schema, dict):
-        raise ValueError("target_schema_json must decode to a JSON object")
-
-    mapped_dir = PROJECT_ROOT / "output" / "mapped"
-    mapped_dir.mkdir(parents=True, exist_ok=True)
-
-    (mapped_dir / "mapping_plan.json").write_text(json.dumps(mapping_plan, indent=2))
-    (mapped_dir / "source_metadata.json").write_text(json.dumps(source_metadata, indent=2))
-    (mapped_dir / "target_schema.json").write_text(json.dumps(target_schema, indent=2))
-
-    resolved_config = config_path or (str(DEFAULT_EVALUATION_CONFIG) if DEFAULT_EVALUATION_CONFIG.exists() else None)
-    resolved_output = output_dir or str(DEFAULT_EVALUATION_OUTPUT)
-
-    summary = run_schema_mapping_evaluation(
-        final_dataset_path=final_dataset_path,
-        mapping_plan=mapping_plan,
-        source_metadata=source_metadata,
-        target_schema=target_schema,
-        config_path=resolved_config,
-        output_dir=resolved_output,
-    )
-
-    return summary
 
 
 @function_tool
@@ -403,9 +374,29 @@ def evaluate_data_prep_agent(
             "error": "deepeval package required for evaluation"
         })
     
+    def _parse_expected_files(raw: Optional[str]) -> list[str]:
+        if not raw:
+            return []
+        text = raw.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed]
+            return [str(parsed)]
+        except json.JSONDecodeError:
+            # fall back to treating input as newline/ comma separated text
+            tokens = []
+            for line in text.replace(",", "\n").splitlines():
+                token = line.strip().strip('"').strip("'")
+                if token:
+                    tokens.append(token)
+            return tokens
+
     try:
-        # Parse expected files if provided
-        expected_list = json.loads(expected_files) if expected_files else []
+        # Parse expected files if provided (robust to plain-text inputs)
+        expected_list = _parse_expected_files(expected_files)
         
         # Create test case with required context
         test_case = LLMTestCase(
@@ -846,8 +837,26 @@ def generate_summary_report(
     if not api_key:
         return "Error: OPENAI_API_KEY not set"
     
+    def _parse_results(raw: str) -> dict[str, Any]:
+        text = raw.strip()
+        if not text:
+            return {}
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # Try to find the first JSON object in case of concatenated text
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                fragment = text[start : end + 1]
+                try:
+                    return json.loads(fragment)
+                except json.JSONDecodeError:
+                    pass
+            return {}
+
     try:
-        results = json.loads(evaluation_results_json)
+        results = _parse_results(evaluation_results_json)
         metrics = results.get("metrics", [])
         
         # Build prompt for summary report agent

@@ -1,4 +1,0 @@
-{
-  "outputs": [],
-  "error": "Invalid input format prevented CSV mapping tool from running. Please ensure all nested JSON arrays and objects are strictly valid in supplied tool-call data structure."
-}

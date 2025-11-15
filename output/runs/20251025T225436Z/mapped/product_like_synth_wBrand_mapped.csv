@@ -1,6 +1,0 @@
-product_id,category,subcategory,store_cluster,unit_orig_price,product_launch_date
-P0001,Electronics,Phone,LG,39.85,2022-11-10
-P0002,Electronics,Laptop,LG,22.35,2020-11-26
-P0003,Electronics,Tablet,LG,43.32,2022-05-21
-P0004,Clothing,Shirt,Zara,32.58,2022-02-08
-P0005,Clothing,Pants,Zara,41.64,2022-03-16

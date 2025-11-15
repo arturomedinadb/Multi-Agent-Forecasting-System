@@ -1,9 +1,14 @@
-import os
+"""Factory for creating configured PromptRenderer instances."""
+from pathlib import Path
 from .renderer import PromptRenderer
 
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+
 def get_renderer() -> PromptRenderer:
-    # In a later batch we can read PROMPTS_VERSION to switch folders (v1, v1_1, etc.)
+    """Return a configured PromptRenderer using project defaults."""
     return PromptRenderer(
-        templates_root=os.getenv("PROMPTS_TEMPLATES_ROOT", "templates"),
-        registry_path=os.getenv("PROMPTS_REGISTRY_PATH", "templates/prompts/registry.yaml"),
+        templates_root=PROJECT_ROOT / "templates",
+        registry_path=PROJECT_ROOT / "templates" / "prompts" / "registry.yaml",
     )
+

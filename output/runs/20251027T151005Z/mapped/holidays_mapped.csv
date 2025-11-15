@@ -1,4 +1,0 @@
-is_seasonal_product,date,holiday_name,is_holiday,is_retail_holiday,seasonal_peak_months
-Winter,01/01/2022,New Year's Day,1,0,Winter
-Spring,15/04/2022,Good Friday,1,1,Spring
-Spring,23/05/2022,Victoria Day,1,1,Spring

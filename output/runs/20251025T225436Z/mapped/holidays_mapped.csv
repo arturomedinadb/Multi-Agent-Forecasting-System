@@ -1,6 +1,0 @@
-seasonal_peak_months,date,is_holiday,holiday_name,store_region,is_retail_holiday
-Winter,01/01/2022,1,New Year's Day,ALL,0
-Spring,15/04/2022,1,Good Friday,ALL,1
-Spring,23/05/2022,1,Victoria Day,ALL,1
-Summer,01/07/2022,1,Canada Day,ALL,1
-Fall,05/09/2022,1,Labour Day,ALL,1
