@@ -82,7 +82,7 @@ class PromptRenderer:
             trim_blocks=True,
             lstrip_blocks=True,
             keep_trailing_newline=True,
-            autoescape=False,  # prompts are plain text; be explicit if you escape
+            autoescape=False,
         )
         # filters
         self._env.filters["tojson_compact"] = _tojson_compact
@@ -103,11 +103,8 @@ class PromptRenderer:
         try:
             template = self._env.get_template(Path(spec.path).relative_to(self._templates_root).as_posix())
         except (TemplateNotFound, ValueError):
-            # Allow absolute or relative (from templates root) paths in registry
             template = self._env.get_template(spec.path)
 
         rendered = template.render(**kwargs)
-        # useful for logging/handoffs
-        sha = _sha256(rendered)
-        return rendered  # caller can log the hash if desired
+        return rendered
 

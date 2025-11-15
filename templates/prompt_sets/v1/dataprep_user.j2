@@ -38,15 +38,14 @@ Aggregate all results into a single JSON array with this structure:
 - Ensure no files are skipped
 - Include error entries for any failed files
 
-### 4. OUTPUT FORMAT
-Return ONLY the JSON array, no additional text.
-After the JSON, print: "Data preparation complete - {{ source_files|length }} files analyzed"
+### 4. COMPLETE AND HAND OFF
+After analyzing all files:
+1. Return the complete JSON array with metadata for all {{source_files|length}} files
+2. **IMMEDIATELY transfer to DataPrepEvaluationAgent** to evaluate your work
 
-{% if target_schema_json is defined and target_schema_json %}
-## Target Schema Reference
-(For context - will be used in next step)
-{{ target_schema_json | ensure_triple_backticks('json') }}
-{% endif %}
+The evaluation agent will assess quality, then pass to column mapping.
+
+**Use the transfer function to hand off to DataPrepEvaluationAgent when complete.**
 
 ---
 **Quality Standards**: Complete coverage, accurate dtypes, clean JSON, no missing files
