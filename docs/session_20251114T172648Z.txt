@@ -1,0 +1,327 @@
+======================================================================
+SESSION SUMMARY: 20251114T172648Z
+======================================================================
+
+Database: /Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/output/workflow_sessions.db
+Total messages: 100
+
+Agent Interactions:
+  evaluate_column_mapping_agent: 3 messages
+  evaluate_data_integration_agent: 1 messages
+  generate_mapped_csvs: 10 messages
+  generate_summary_report: 3 messages
+  load_and_describe_dataset: 30 messages
+  merge_mapped_csvs_to_target: 1 messages
+  unknown: 51 messages
+  validate_final_dataset: 1 messages
+
+Agent Sequence:
+  unknown -> load_and_describe_dataset -> load_and_describe_dataset -> load_and_describe_dataset -> load_and_describe_dataset -> load_and_describe_dataset -> load_and_describe_dataset -> load_and_describe_dataset -> load_and_describe_dataset -> load_and_describe_dataset -> ...
+
+Detailed Messages:
+
+  [0] user (unknown):
+    Run the schema mapping workflow end-to-end using the configuration below.
+
+Source CSV files (10):
+- /Users/kkkatheriine/Desktop/End-To-End-AI-Forecasting-Agent/data/transaction_like_synth.csv
+- /Users...
+
+  [1] None (load_and_describe_dataset):
+    
+
+  [2] None (load_and_describe_dataset):
+    
+
+  [3] None (load_and_describe_dataset):
+    
+
+  [4] None (load_and_describe_dataset):
+    
+
+  [5] None (load_and_describe_dataset):
+    
+
+  [6] None (load_and_describe_dataset):
+    
+
+  [7] None (load_and_describe_dataset):
+    
+
+  [8] None (load_and_describe_dataset):
+    
+
+  [9] None (load_and_describe_dataset):
+    
+
+  [10] None (load_and_describe_dataset):
+    
+
+  [11] None (unknown):
+    
+
+  [12] None (unknown):
+    
+
+  [13] None (unknown):
+    
+
+  [14] None (unknown):
+    
+
+  [15] None (unknown):
+    
+
+  [16] None (unknown):
+    
+
+  [17] None (unknown):
+    
+
+  [18] None (unknown):
+    
+
+  [19] None (unknown):
+    
+
+  [20] None (unknown):
+    
+
+  [21] None (load_and_describe_dataset):
+    
+
+  [22] None (unknown):
+    
+
+  [23] None (load_and_describe_dataset):
+    
+
+  [24] None (unknown):
+    
+
+  [25] None (load_and_describe_dataset):
+    
+
+  [26] None (unknown):
+    
+
+  [27] None (load_and_describe_dataset):
+    
+
+  [28] None (unknown):
+    
+
+  [29] None (load_and_describe_dataset):
+    
+
+  [30] None (unknown):
+    
+
+  [31] None (load_and_describe_dataset):
+    
+
+  [32] None (unknown):
+    
+
+  [33] None (load_and_describe_dataset):
+    
+
+  [34] None (unknown):
+    
+
+  [35] None (load_and_describe_dataset):
+    
+
+  [36] None (unknown):
+    
+
+  [37] None (load_and_describe_dataset):
+    
+
+  [38] None (unknown):
+    
+
+  [39] None (load_and_describe_dataset):
+    
+
+  [40] None (unknown):
+    
+
+  [41] None (load_and_describe_dataset):
+    
+
+  [42] None (unknown):
+    
+
+  [43] None (load_and_describe_dataset):
+    
+
+  [44] None (unknown):
+    
+
+  [45] None (load_and_describe_dataset):
+    
+
+  [46] None (unknown):
+    
+
+  [47] None (load_and_describe_dataset):
+    
+
+  [48] None (unknown):
+    
+
+  [49] None (load_and_describe_dataset):
+    
+
+  [50] None (unknown):
+    
+
+  [51] None (load_and_describe_dataset):
+    
+
+  [52] None (unknown):
+    
+
+  [53] None (load_and_describe_dataset):
+    
+
+  [54] None (unknown):
+    
+
+  [55] None (load_and_describe_dataset):
+    
+
+  [56] None (unknown):
+    
+
+  [57] None (load_and_describe_dataset):
+    
+
+  [58] None (unknown):
+    
+
+  [59] None (load_and_describe_dataset):
+    
+
+  [60] None (unknown):
+    
+
+  [61] None (generate_mapped_csvs):
+    
+
+  [62] None (unknown):
+    
+
+  [63] None (generate_mapped_csvs):
+    
+
+  [64] None (unknown):
+    
+
+  [65] None (generate_mapped_csvs):
+    
+
+  [66] None (unknown):
+    
+
+  [67] None (generate_mapped_csvs):
+    
+
+  [68] None (unknown):
+    
+
+  [69] None (generate_mapped_csvs):
+    
+
+  [70] None (unknown):
+    
+
+  [71] None (generate_mapped_csvs):
+    
+
+  [72] None (unknown):
+    
+
+  [73] None (generate_mapped_csvs):
+    
+
+  [74] None (unknown):
+    
+
+  [75] None (generate_mapped_csvs):
+    
+
+  [76] None (unknown):
+    
+
+  [77] None (generate_mapped_csvs):
+    
+
+  [78] None (unknown):
+    
+
+  [79] None (generate_mapped_csvs):
+    
+
+  [80] None (unknown):
+    
+
+  [81] None (evaluate_column_mapping_agent):
+    
+
+  [82] None (unknown):
+    
+
+  [83] None (evaluate_column_mapping_agent):
+    
+
+  [84] None (unknown):
+    
+
+  [85] None (evaluate_column_mapping_agent):
+    
+
+  [86] None (generate_summary_report):
+    
+
+  [87] None (unknown):
+    
+
+  [88] None (unknown):
+    
+
+  [89] None (merge_mapped_csvs_to_target):
+    
+
+  [90] None (unknown):
+    
+
+  [91] None (evaluate_data_integration_agent):
+    
+
+  [92] None (unknown):
+    
+
+  [93] None (validate_final_dataset):
+    
+
+  [94] None (unknown):
+    
+
+  [95] None (generate_summary_report):
+    
+
+  [96] None (unknown):
+    
+
+  [97] None (generate_summary_report):
+    
+
+  [98] None (unknown):
+    
+
+  [99] assistant (unknown):
+    [{'annotations': [], 'text': 'The schema mapping workflow has completed with the following outcomes:\n\n1. **Files Processed**: \n   - 10 source files were processed.\n\n2. **Mappings Created**: \n   ...
+
+======================================================================
