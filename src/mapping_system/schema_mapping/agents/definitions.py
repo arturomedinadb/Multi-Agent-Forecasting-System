@@ -10,6 +10,7 @@ from ..tools.functions import (
     evaluate_data_integration_agent,
     validate_final_dataset,
     generate_summary_report,
+    generate_final_workflow_report,
 )
 
 
@@ -42,20 +43,34 @@ data_prep_agent = Agent(
     - Common data type conventions
     - Data quality indicators
 
-    CONSTRAINTS:
-    - Use available data loading tools
-    - Process all provided files
-    - Return only structured metadata (no commentary)
-    - Ensure all files have corresponding metadata or error entries
-
-    STYLE:
-    - Concise and systematic
-    - Machine-readable output
-    - Complete coverage of input files
-
-    OUTPUT & HANDOFF:
-    - Provide a single JSON array covering every input file (or an error entry)
-    - When the metadata is ready, do NOT print it as plain text. Instead, call transfer_to_workflow_orchestrator and pass the JSON array as the tool input so the orchestrator can continue
+    WORKFLOW INSTRUCTIONS (CRITICAL - FOLLOW EXACTLY):
+    
+    STEP 1: Call load_and_describe_dataset for EACH file in the list (ONE call per file)
+    STEP 2: STOP and WAIT for ALL tool results to return
+    STEP 3: Check if you have results for ALL files in the source list
+    STEP 4: If YES -> IMMEDIATELY call transfer_to_workflow_orchestrator with the complete JSON array
+    STEP 5: If NO -> Call load_and_describe_dataset ONLY for missing files
+    
+    CRITICAL RULES:
+    - NEVER call load_and_describe_dataset more than ONCE per file path
+    - NEVER call load_and_describe_dataset if you already have results for that file
+    - NEVER provide text commentary after receiving tool results
+    - ALWAYS call transfer_to_workflow_orchestrator as your FINAL action
+    - The handoff to orchestrator is MANDATORY - do NOT end without it
+    
+    EXAMPLE WORKFLOW:
+    Input: ["file1.csv", "file2.csv"]
+    Action 1: load_and_describe_dataset("file1.csv")
+    Action 2: load_and_describe_dataset("file2.csv")
+    Wait for results...
+    Result 1: {"file_path": "file1.csv", ...}
+    Result 2: {"file_path": "file2.csv", ...}
+    Action 3: transfer_to_workflow_orchestrator([result1, result2])
+    DONE - do NOT call any more tools
+    
+    STOPPING CONDITION:
+    You are DONE when you have called transfer_to_workflow_orchestrator.
+    After the handoff, do NOT call any more tools or provide any more responses.
     """,
     tools=[load_and_describe_dataset],
     handoffs=[],  # Set after orchestrator is built
@@ -93,6 +108,12 @@ column_mapping_agent = Agent(
     - All reasoning strings MUST be single-line text
     - Validate JSON structure before submitting to any tool
     - If you have forward slashes in text, they do NOT need escaping in JSON
+    
+    FILE PATH HANDLING (CRITICAL):
+    - NEVER modify, translate, or "fix" file paths from the source metadata
+    - Copy file paths EXACTLY as they appear (e.g., if it says "Documentos", keep "Documentos")
+    - DO NOT translate folder names to English (Documentos ≠ Documents, Escritorio ≠ Desktop)
+    - The OS may be in a non-English language - preserve all path components as-is
 
     CONSTRAINTS:
     - Only map columns with confidence > 0.5
@@ -127,6 +148,11 @@ data_integration_agent = Agent(
     - Perform intelligent joins on common key fields
     - Ensure all target schema columns are present (fill with None if missing)
     - Validate merged output against schema requirements
+    
+    FILE PATH HANDLING (CRITICAL):
+    - NEVER modify or translate file paths from previous tool outputs
+    - Use paths EXACTLY as provided (preserve "Documentos", "Documents", or any other language)
+    - DO NOT "normalize" or "fix" paths - they are already correct for the user's OS
 
     CONSTRAINTS:
     - Use provided merge tools for all integration operations
@@ -308,7 +334,7 @@ def create_workflow_orchestrator_agent(instructions: str) -> Agent:
         name="WorkflowOrchestrator",
         model=MODEL_DEFAULT,
         instructions=instructions,
-        tools=[],
+        tools=[generate_final_workflow_report],  # Final reporting tool
         handoffs=[
             data_prep_agent,
             data_prep_evaluation_agent,
