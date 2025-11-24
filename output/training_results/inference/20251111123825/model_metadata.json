@@ -1,0 +1,16 @@
+{
+  "model_name": "lightgbm_model_20251111123825",
+  "model_type": "lightgbm",
+  "model_uuid": "20251111123825",
+  "model_filename": "lightgbm_model_20251111123825.pkl",
+  "rmse": 1.942505035446522,
+  "r2": 0.8921438208454842,
+  "mae": 1.3830767740675871,
+  "mape": 0.0,
+  "overall_score": 62.24617509242127,
+  "iteration": 1,
+  "saved_at": "2025-11-11T12:40:17.038357",
+  "inference_path": "output/training_results/inference/20251111123825/best_lightgbm_model_20251111123825.pkl",
+  "source_path": "output/training_results/models/20251111123825/lightgbm_model_20251111123825.pkl",
+  "models_directory": "output/training_results/models/20251111123825"
+}

@@ -1,0 +1,22 @@
+{
+  "model_name": "catboost_model_20251117151457",
+  "model_type": "catboost",
+  "model_uuid": "20251117151457",
+  "hyperparameters": {
+    "iterations": 100,
+    "depth": 6,
+    "learning_rate": 0.1,
+    "l2_leaf_reg": 3,
+    "random_state": 42,
+    "verbose": false
+  },
+  "model_path": "output/training_results/models/20251117151457/catboost_model_20251117151457.pkl",
+  "created_at": "2025-11-17T15:19:54.313339",
+  "metrics": {
+    "rmse": 1.9524145534789656,
+    "r2": 0.891040576391386,
+    "train_rmse": 1.9542205344877297,
+    "train_r2": 0.8978384674392852,
+    "training_time": 12.866081
+  }
+}

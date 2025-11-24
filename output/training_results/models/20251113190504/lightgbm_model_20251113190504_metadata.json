@@ -1,0 +1,23 @@
+{
+  "model_name": "lightgbm_model_20251113190504",
+  "model_type": "lightgbm",
+  "model_uuid": "20251113190504",
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "num_leaves": 31,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42
+  },
+  "model_path": "output/training_results/models/20251113190504/lightgbm_model_20251113190504.pkl",
+  "created_at": "2025-11-13T19:05:33.705791",
+  "metrics": {
+    "rmse": 1.942767154497574,
+    "r2": 0.8921147109422916,
+    "train_rmse": 1.9298005285254831,
+    "train_r2": 0.900375742767342,
+    "training_time": 6.97233
+  }
+}
