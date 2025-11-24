@@ -37,10 +37,13 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 dependencies = [
+    # Core AI and Agent Framework
     "openai-agents>=0.3.0",
     "openai>=1.100.0",
+    
+    # Data Processing and Validation
     "pydantic>=2.11.0",
     "pandas>=2.0.0",
     "numpy>=1.24.0",
@@ -48,6 +51,52 @@ dependencies = [
     "pandera>=0.20.0",
     "pyarrow>=15.0.0",
     "fastparquet>=2024.5.0",
+    
+    # Core Machine Learning
+    "scikit-learn>=1.3.0",
+    "scipy>=1.11.0",
+    "joblib>=1.3.0",
+    
+    # Gradient Boosting Models
+    "xgboost>=2.0.0",
+    "lightgbm>=4.0.0",
+    "catboost>=1.2.0",
+    
+    # Time Series Analysis
+    "statsmodels>=0.14.0",
+    
+    # Advanced Hyperparameter Optimization
+    "optuna>=3.4.0",
+    "hyperopt>=0.2.7",
+    "scikit-optimize>=0.9.0",
+    
+    # Model Interpretation and Analysis
+    "shap>=0.43.0",
+    "lime>=0.2.0.1",
+    
+    # Visualization
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "plotly>=5.17.0",
+    
+    # System Monitoring and Performance
+    "psutil>=5.9.0",
+    "memory-profiler>=0.61.0",
+    
+    # Data Quality and Preprocessing
+    "feature-engine>=1.6.0",
+    "category-encoders>=2.6.0",
+    
+    # Time Series Specific
+    "prophet>=1.1.4",
+    "sktime>=0.24.0",
+    
+    # Additional ML Utilities
+    "imbalanced-learn>=0.11.0",
+    "mlxtend>=0.22.0",
+
+    # Memory
+    "aiosqlite>=0.21.0",
 ]
 
 [project.optional-dependencies]
@@ -60,17 +109,49 @@ dev = [
     "flake8>=6.0.0",
     "mypy>=1.8.0",
     "pre-commit>=3.0.0",
+    "jupyter>=1.0.0",
+    "ipykernel>=6.25.0",
+    "notebook>=7.0.0",
 ]
 docs = [
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=2.0.0",
     "myst-parser>=2.0.0",
+    "sphinx-autodoc-typehints>=1.24.0",
+    "sphinxcontrib-mermaid>=0.8.0",
 ]
 test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.12.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-xdist>=3.3.0",
+]
+ml = [
+    # Advanced ML libraries for research and experimentation
+    "tensorflow>=2.13.0",
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "datasets>=2.14.0",
+    "accelerate>=0.24.0",
+]
+viz = [
+    # Advanced visualization libraries
+    "plotly>=5.17.0",
+    "dash>=2.14.0",
+    "streamlit>=1.28.0",
+    "bokeh>=3.3.0",
+    "altair>=5.1.0",
+]
+prod = [
+    # Production deployment libraries
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "gunicorn>=21.2.0",
+    "redis>=5.0.0",
+    "celery>=5.3.0",
+    "prometheus-client>=0.19.0",
 ]
 
 [project.urls]
@@ -82,6 +163,9 @@ Changelog = "https://github.com/your-org/ai_forecasting_agents/blob/main/CHANGEL
 
 [project.scripts]
 schema-mapper = "src.ai_forecasting_agents.schema_mapping.run_workflow:main"
+feature-engineer = "src.ai_forecasting_agents.demand_forecasting.run_feature_engineering:main"
+train-models = "scripts.run_training:main"
+run-pipeline = "scripts.run_complete_pipeline:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ai_forecasting_agents"]
