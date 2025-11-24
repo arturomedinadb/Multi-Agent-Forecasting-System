@@ -29,13 +29,16 @@ def _get_row_limit(default: int = 10) -> int:
 
 
 def _normalize_path(value: str | None) -> str | None:
-    """Normalize a file path to absolute form."""
+    """
+    Normalize a file path to use forward slashes for JSON compatibility.
+    DOES NOT resolve or translate paths to avoid language-specific issues
+    (e.g., "Documentos" on Spanish Windows should stay "Documentos").
+    """
     if not value:
         return None
-    try:
-        return str(Path(value).expanduser().resolve())
-    except Exception:
-        return os.path.abspath(value)
+    # Simply replace backslashes with forward slashes
+    # Do NOT use Path.resolve() as it may translate folder names based on OS language
+    return value.replace('\\', '/')
 
 
 def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict[str, Any] | List[Dict[str, Any]]:
@@ -86,8 +89,11 @@ def load_and_describe_dataset(file_path: str) -> str:
     print(f"TOOL: Loading top {row_limit} rows of '{file_path}'...")
     try:
         df = pd.read_csv(file_path, nrows=row_limit)
+        # Convert backslashes to forward slashes WITHOUT Path normalization
+        # This preserves the original path (e.g., "Documentos" on Spanish Windows)
+        json_safe_path = file_path.replace('\\', '/')
         metadata: Dict[str, Any] = {
-            "file_path": file_path,
+            "file_path": json_safe_path,
             "shape": list(df.shape),
             "columns": df.columns.tolist(),
             "dtypes": df.dtypes.astype(str).to_dict(),
@@ -96,7 +102,8 @@ def load_and_describe_dataset(file_path: str) -> str:
         return json.dumps(metadata)
     except Exception as e:
         print(f"TOOL ERROR in load_and_describe_dataset: {e}")
-        return json.dumps({"error": str(e), "file_path": file_path})
+        json_safe_path = file_path.replace('\\', '/')
+        return json.dumps({"error": str(e), "file_path": json_safe_path})
 
 # --- Schema Mapping Tool ---
 
@@ -113,6 +120,74 @@ def run_generate_mapped_csvs(
     """
     def _ensure_mapping_dict(payload: Any) -> dict[str, Any]:
         if isinstance(payload, dict):
+            # First check if there's an extra wrapper layer like {"columns": {...}} or {"mappings": {...}}
+            # where the value is itself a dict of column mappings
+            if len(payload) == 1:
+                single_key = list(payload.keys())[0]
+                single_value = payload[single_key]
+                if single_key in ["columns", "mappings", "schema", "fields"] and isinstance(single_value, dict):
+                    # Recursively process the unwrapped value
+                    return _ensure_mapping_dict(single_value)
+            
+            # Check if it's a flat dict of column mappings 
+            # Format 1: {"transaction_date": {"target_column": "date", ...}}
+            # Format 2: {"transaction_date": [{"target": "date", ...}]}
+            sample_values = list(payload.values())[:3]
+            
+            # Check for different flat dict formats:
+            # Format 1: {"col1": {"target_column": "col2", ...}} - source as key, target in value
+            # Format 2: {"target_col": {"source_column": "col1", ...}} - target as key, source in value  
+            # Format 3: {"col1": [{"target": "col2", ...}]} - array format
+            is_flat_dict_format = sample_values and all(isinstance(v, dict) and ("target_column" in v or "target" in v or "source_column" in v or "source" in v) for v in sample_values)
+            is_array_format = sample_values and all(isinstance(v, list) and v and isinstance(v[0], dict) for v in sample_values)
+            
+            if is_flat_dict_format or is_array_format:
+                # Convert formats to nested structure
+                if is_array_format:
+                    # Format: {"filename.csv": [{"source_column": "col1", "target_column": "col2"}]}
+                    # This is actually the correct nested format! Just need to restructure
+                    result_mappings = []
+                    for key, mapping_array in payload.items():
+                        if isinstance(mapping_array, list) and mapping_array:
+                            # Check if key looks like a filename (has .csv or similar extension)
+                            if '.' in key and any(ext in key.lower() for ext in ['.csv', '.xlsx', '.json', '.txt']):
+                                # Key is a filename - create proper nested structure
+                                result_mappings.append({
+                                    "source_file": key,
+                                    "mappings": mapping_array
+                                })
+                            else:
+                                # Key is not a filename, treat as fallback
+                                result_mappings.extend(mapping_array)
+                    return {"mappings": result_mappings}
+                
+                elif is_flat_dict_format:
+                    # Handle two variations of flat dict format
+                    fallback_mappings = []
+                    for key, mapping_info in payload.items():
+                        if isinstance(mapping_info, dict):
+                            # Check if target is the key (Format 2: {"target_col": {"source_column": "col1"}})
+                            source_col = mapping_info.get("source_column") or mapping_info.get("source")
+                            if source_col:
+                                # Key is target column, value contains source column
+                                fallback_mappings.append({
+                                    "source_column": source_col,
+                                    "target_column": key,  # Key is the target!
+                                    "confidence": mapping_info.get("confidence", 0.5),
+                                    "reasoning": mapping_info.get("reasoning") or mapping_info.get("reason", "")
+                                })
+                            else:
+                                # Check if source is the key (Format 1: {"col1": {"target_column": "col2"}})
+                                target_col = mapping_info.get("target_column") or mapping_info.get("target")
+                                if target_col:
+                                    # Key is source column, value contains target column
+                                    fallback_mappings.append({
+                                        "source_column": key,
+                                        "target_column": target_col,
+                                        "confidence": mapping_info.get("confidence", 0.5),
+                                        "reasoning": mapping_info.get("reasoning") or mapping_info.get("reason", "")
+                                    })
+                    return {"mappings": fallback_mappings}  # Use as fallback since no source_file specified
             return payload
         if isinstance(payload, list):
             # LLM sometimes sends bare list instead of {"mappings": [...]}
@@ -128,42 +203,92 @@ def run_generate_mapped_csvs(
 
     try:
         os.makedirs(output_dir, exist_ok=True)
-        source_meta = json.loads(source_metadata_json) or []
-        raw_mappings = json.loads(mappings_json)
+        
+        # If it's already a dict/list, don't parse it
+        if isinstance(source_metadata_json, (dict, list)):
+            source_meta = source_metadata_json if isinstance(source_metadata_json, list) else [source_metadata_json]
+        else:
+            # Fix Windows backslashes: replace single backslash with forward slash
+            # This handles cases where LLM puts raw Windows paths in JSON
+            cleaned_source = source_metadata_json.replace('\\', '/')
+            source_meta = json.loads(_sanitize_json_string(cleaned_source)) or []
+        
+        # DEBUG: Show input
+        
+        if isinstance(mappings_json, dict):
+            raw_mappings = mappings_json
+        else:
+            cleaned_mappings = mappings_json.replace('\\', '/')
+            cleaned_mappings = _sanitize_json_string(cleaned_mappings)
+            
+            # Try parsing with error diagnostics
+            try:
+                raw_mappings = json.loads(cleaned_mappings)
+            except json.JSONDecodeError as json_err:
+                print(f"DEBUG: JSON parse error at position {json_err.pos}: {json_err.msg}")
+                if json_err.pos and len(cleaned_mappings) > json_err.pos:
+                    start = max(0, json_err.pos - 100)
+                    end = min(len(cleaned_mappings), json_err.pos + 100)
+                    print(f"DEBUG: Context around error (chars {start}-{end}):")
+                    print(f"  ...{cleaned_mappings[start:end]}...")
+                # Try to fix and re-parse
+                import re
+                fixed_json = re.sub(r',\s*([}\]])', r'\1', cleaned_mappings)  # Remove trailing commas
+                fixed_json = re.sub(r'([}\]])\s*([{\[])', r'\1,\2', fixed_json)  # Add missing commas between objects
+                try:
+                    raw_mappings = json.loads(fixed_json)
+                    print(f"DEBUG: Successfully parsed after fixing common JSON issues")
+                except:
+                    raise json_err  # Re-raise original error
+            
         mapping_payload = _ensure_mapping_dict(raw_mappings)
     except Exception as e:
         print(f"TOOL ERROR in generate_mapped_csvs: Invalid JSON input - {e}")
+        import traceback
+        traceback.print_exc()
         return json.dumps({"outputs": [], "error": f"Invalid JSON input: {e}"})
 
-    mapping_entries = mapping_payload.get("mappings", [])
+    # Accept both "mappings" and "columns" as valid top-level keys
+    mapping_entries = mapping_payload.get("mappings") or mapping_payload.get("columns", [])
     per_file: Dict[str, List[Dict[str, Any]]] = {}
     fallback: List[Dict[str, Any]] = []
     results: List[Dict[str, Any]] = []
 
-    for entry in mapping_entries:
+    for idx, entry in enumerate(mapping_entries):
         if not isinstance(entry, dict):
             continue
-        if "source_file" in entry:
-            normalized_key = _normalize_path(entry.get("source_file"))
+        
+        # Accept both "source_file" and "source" as valid keys
+        source_path = entry.get("source_file") or entry.get("source")
+        if source_path:
+            normalized_key = _normalize_path(source_path)
+            print(f"DEBUG run_generate_mapped_csvs: Processing source: {source_path} -> normalized: {normalized_key}")
             if normalized_key:
                 mappings_for_file = entry.get("mappings", [])
                 if isinstance(mappings_for_file, list):
                     filtered = [m for m in mappings_for_file if isinstance(m, dict)]
                     per_file[normalized_key] = filtered
                     per_file[Path(normalized_key).name] = filtered
+                    print(f"DEBUG run_generate_mapped_csvs: Added {len(filtered)} mappings for key '{normalized_key}' and '{Path(normalized_key).name}'")
         elif entry.get("source_column") and entry.get("target_column"):
             fallback.append(entry)
-
+    
     results: List[Dict[str, Any]] = []
 
     row_limit = _get_row_limit()
 
     for meta in source_meta:
+        # Safety check: ensure meta is a dict
+        if not isinstance(meta, dict):
+            print(f"TOOL WARNING: Skipping non-dict metadata entry: {type(meta).__name__}")
+            continue
+            
         path = meta.get("file_path")
         if not path:
             continue
 
         normalized_meta_path = _normalize_path(path)
+        
         mapping_list = per_file.get(normalized_meta_path)
 
         if mapping_list is None and normalized_meta_path is not None:
@@ -177,6 +302,8 @@ def run_generate_mapped_csvs(
             continue
 
         try:
+            # Use original path (with backslashes) for Windows file system
+            # Only normalize for JSON/comparison purposes
             df = pd.read_csv(path, nrows=row_limit)
         except Exception as e:
             print(f"TOOL ERROR: Unable to read '{path}': {e}")
@@ -208,12 +335,12 @@ def run_generate_mapped_csvs(
         mapped_df.to_csv(out_path, index=False)
 
         results.append({
-            "source_file": path,
-            "output_path": str(out_path),
+            "source_file": str(path).replace('\\', '/'),
+            "output_path": str(out_path).replace('\\', '/'),
             "columns": list(mapped_df.columns),
         })
 
-    print(f"TOOL: Wrote {len(results)} mapped CSVs to {output_dir}")
+    print(f"Wrote {len(results)} mapped CSVs to {output_dir}")
     return json.dumps({"outputs": results})
 
 
@@ -227,7 +354,10 @@ def generate_mapped_csvs(source_metadata_json: str, mappings_json: str, output_d
     """
     print("TOOL: Generating per-dataset mapped CSVs...")
     try:
-        return run_generate_mapped_csvs(source_metadata_json, mappings_json, output_dir)
+        result = run_generate_mapped_csvs(source_metadata_json, mappings_json, output_dir)
+        # DEBUG: Print what we're returning
+        print(f"DEBUG generate_mapped_csvs: Returning result (first 500 chars): {result[:500]}")
+        return result
     except Exception as e:
         print(f"TOOL ERROR in generate_mapped_csvs: {e}")
         return json.dumps({"outputs": [], "error": str(e)})
@@ -252,7 +382,17 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
     """
     print("TOOL: Merging mapped CSVs into target schema CSV...")
     try:
-        raw = json.loads(mapped_outputs_json) if isinstance(mapped_outputs_json, str) else mapped_outputs_json
+        
+        # Use robust JSON parsing
+        if isinstance(mapped_outputs_json, str):
+            # Replace backslashes with forward slashes to avoid JSON escape issues
+            cleaned_json = mapped_outputs_json.replace('\\', '/')
+            raw = _extract_first_json(cleaned_json)
+            if not raw:
+                print("TOOL ERROR: Failed to parse mapped_outputs_json")
+                return json.dumps({"status": "Failed", "error": "Invalid mapped_outputs_json"})
+        else:
+            raw = mapped_outputs_json
 
         if isinstance(raw, dict):
             mapped = raw.get("outputs", []) or raw.get("output", [])
@@ -279,11 +419,30 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
         dataframes: List[pd.DataFrame] = []
         for entry in mapped:
             p = entry.get("output_path")
+            
+            # Try original path first
             if p and os.path.exists(p):
                 df = pd.read_csv(p)
                 dataframes.append(df)
-            else:
-                print(f"TOOL WARNING: Missing mapped file: {p}")
+            elif p:
+                # Try path with Documentos/Documents swap (Spanish Windows fix)
+                alt_paths = [
+                    p.replace("/Documents/", "/Documentos/"),
+                    p.replace("/Documentos/", "/Documents/"),
+                    p.replace("\\Documents\\", "\\Documentos\\"),
+                    p.replace("\\Documentos\\", "\\Documents\\")
+                ]
+                
+                found = False
+                for alt_p in alt_paths:
+                    if alt_p != p and os.path.exists(alt_p):
+                        df = pd.read_csv(alt_p)
+                        dataframes.append(df)
+                        found = True
+                        break
+                
+                if not found:
+                    print(f"TOOL WARNING: Missing mapped file: {p}")
 
         if not dataframes:
             return json.dumps({"status": "Failed", "error": "No mapped CSVs could be loaded."})
@@ -310,7 +469,14 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
                 print("TOOL WARNING: No common keys; skipping a dataframe")
 
         # Ensure full target schema columns exist
-        target_schema = json.loads(target_schema_json)
+        try:
+            target_schema = json.loads(target_schema_json)
+        except json.JSONDecodeError:
+            target_schema = _extract_first_json(target_schema_json)
+            if not target_schema:
+                print("WARNING: Failed to parse target schema, using empty schema")
+                target_schema = {}
+        
         target_fields: List[str] = list(target_schema.get("properties", {}).keys())
         for col in target_fields:
             if col not in main_df.columns:
@@ -326,7 +492,7 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
 
         return json.dumps({
             "status": "Success",
-            "output_path": output_path,
+            "output_path": str(output_path).replace('\\', '/'),
             "rows": len(main_df),
             "columns": list(main_df.columns)
         })
@@ -443,11 +609,65 @@ def evaluate_data_prep_agent(
 
 
 def _sanitize_json_string(json_str: str) -> str:
-    """Remove invalid control characters from JSON string."""
+    """Remove invalid control characters from JSON string while preserving important whitespace."""
     import re
-    # Remove control characters except newlines and tabs in the JSON structure itself
-    # This regex keeps structural whitespace but removes embedded control chars in strings
-    return re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', json_str)
+    # Remove problematic control characters but keep newlines (\n), tabs (\t), and carriage returns (\r)
+    # that might be needed in JSON strings. Only remove truly problematic chars.
+    # Keep \x09 (tab), \x0A (newline), \x0D (carriage return)
+    return re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', json_str)
+
+
+def _extract_first_json(json_str: str):
+    """Extract the first valid JSON object from a string that may contain extra data."""
+    import json
+    import re
+    
+    # If it's already a dict/list, return it directly
+    if isinstance(json_str, (dict, list)):
+        return json_str
+    
+    # First, try to fix common JSON formatting issues
+    def fix_common_json_issues(s: str) -> str:
+        # Remove trailing commas before closing braces/brackets
+        s = re.sub(r',\s*([}\]])', r'\1', s)
+        # Fix common quote issues (but preserve proper quotes)
+        return s
+    
+    decoder = json.JSONDecoder()
+    
+    # Try original string first
+    attempts = [
+        json_str.lstrip(),
+        fix_common_json_issues(json_str.lstrip()),
+        json_str,
+    ]
+    
+    for i, attempt in enumerate(attempts):
+        try:
+            # Try to decode the JSON
+            obj, end_idx = decoder.raw_decode(attempt)
+            # Return the parsed object directly, not re-encoded
+            if i > 0:
+                print(f"DEBUG _extract_first_json: Successfully parsed on attempt {i+1}")
+            return obj
+        except json.JSONDecodeError as e:
+            continue
+    
+    # Last resort: try json.loads on the whole string
+    try:
+        return json.loads(json_str)
+    except:
+        pass
+    
+    # If all attempts fail, log error and return empty dict
+    print(f"DEBUG _extract_first_json: All parsing attempts failed")
+    print(f"DEBUG _extract_first_json: Input type: {type(json_str).__name__}, length: {len(json_str) if isinstance(json_str, str) else 'N/A'}")
+    if isinstance(json_str, str):
+        print(f"DEBUG _extract_first_json: First 200 chars: {json_str[:200]}")
+        if len(json_str) > 3400:
+            print(f"DEBUG _extract_first_json: Context around char 3470: {json_str[3370:3570]}")
+    print(f"DEBUG _extract_first_json: Returning empty dict")
+    return {}
 
 
 @function_tool
@@ -493,8 +713,30 @@ def evaluate_column_mapping_agent(
         })
     
     try:
-        mapping_plan = json.loads(_sanitize_json_string(mapping_plan_json))
-        target_schema = json.loads(_sanitize_json_string(target_schema_json))
+        # Fix Windows backslashes before parsing, and extract first valid JSON if there's extra data
+        cleaned_mapping = _sanitize_json_string(mapping_plan_json.replace('\\', '/'))
+        cleaned_schema = _sanitize_json_string(target_schema_json.replace('\\', '/'))
+        
+        
+        # Try direct JSON parsing first (these are already clean JSON strings from function params)
+        # Only use _extract_first_json if direct parsing fails
+        try:
+            mapping_plan = json.loads(cleaned_mapping)
+        except json.JSONDecodeError:
+            mapping_plan = _extract_first_json(cleaned_mapping)
+            
+        try:
+            target_schema = json.loads(cleaned_schema)
+        except json.JSONDecodeError:
+            target_schema = _extract_first_json(cleaned_schema)
+        
+        # Handle mapping_plan being either a dict with "mappings" key or a direct list
+        if isinstance(mapping_plan, list):
+            mappings_list = mapping_plan
+        elif isinstance(mapping_plan, dict):
+            mappings_list = mapping_plan.get("mappings", [])
+        else:
+            mappings_list = []
         
         # Extract target fields and types
         properties = target_schema.get("properties", {})
@@ -509,8 +751,8 @@ def evaluate_column_mapping_agent(
             additional_metadata={
                 "required_fields": required_fields,
                 "target_types": target_types,
-                "mapping_plan": mapping_plan.get("mappings", []),
-                "dataset_columns": [m.get("target_column") for m in mapping_plan.get("mappings", [])],
+                "mapping_plan": mappings_list,
+                "dataset_columns": [m.get("target_column") for m in mappings_list if isinstance(m, dict)],
                 "dataset_dtypes": {}
             }
         )
@@ -688,8 +930,14 @@ def validate_final_dataset(
             })
         
         df = pd.read_csv(final_dataset_path)
-        target_schema = json.loads(_sanitize_json_string(target_schema_json))
-        mapping_plan = json.loads(_sanitize_json_string(mapping_plan_json))
+        # Fix Windows backslashes before parsing, and extract first valid JSON if there's extra data
+        cleaned_schema = _sanitize_json_string(target_schema_json.replace('\\', '/'))
+        cleaned_mapping = _sanitize_json_string(mapping_plan_json.replace('\\', '/'))
+        
+        # Extract first valid JSON object (handles "Extra data" errors)
+        # _extract_first_json now returns the parsed object directly
+        target_schema = _extract_first_json(cleaned_schema)
+        mapping_plan = _extract_first_json(cleaned_mapping)
         
         # Extract schema properties
         properties = target_schema.get("properties", {})
@@ -896,3 +1144,134 @@ Format your response as a clear, professional report."""
         import traceback
         traceback.print_exc()
         return f"Error generating report: {str(exc)}"
+
+
+@function_tool
+def generate_final_workflow_report(
+    data_prep_eval_json: str,
+    column_mapping_eval_json: str,
+    data_integration_eval_json: str,
+    mapped_files_json: str,
+) -> str:
+    """
+    Generate a comprehensive final report that ALWAYS includes evaluation metrics.
+    
+    This function ensures consistent reporting by enforcing a structured format
+    that includes all evaluation results and file outputs.
+    
+    Args:
+        data_prep_eval_json: JSON string with data preparation evaluation results
+        column_mapping_eval_json: JSON string with column mapping evaluation results
+        data_integration_eval_json: JSON string with data integration evaluation results
+        mapped_files_json: JSON string with list of generated mapped files
+    
+    Returns:
+        Formatted markdown report with all metrics and file information
+    """
+    try:
+        # Parse all inputs
+        data_prep_eval = json.loads(data_prep_eval_json) if isinstance(data_prep_eval_json, str) else data_prep_eval_json
+        column_mapping_eval = json.loads(column_mapping_eval_json) if isinstance(column_mapping_eval_json, str) else column_mapping_eval_json
+        data_integration_eval = json.loads(data_integration_eval_json) if isinstance(data_integration_eval_json, str) else data_integration_eval_json
+        mapped_files = json.loads(mapped_files_json) if isinstance(mapped_files_json, str) else mapped_files_json
+        
+        # Build structured report
+        report = []
+        report.append("=" * 70)
+        report.append("WORKFLOW EXECUTION REPORT")
+        report.append("=" * 70)
+        report.append("")
+        
+        # Phase 1: Data Preparation
+        report.append("## Phase 1: Data Preparation")
+        report.append("")
+        if data_prep_eval.get("status") == "success":
+            metrics = data_prep_eval.get("metrics", [])
+            for metric in metrics:
+                name = metric.get("name", "Unknown")
+                score = metric.get("score", 0.0)
+                success = metric.get("success", False)
+                status = "✅ PASS" if success else "❌ FAIL"
+                report.append(f"  - {name}: {score:.2%} {status}")
+        else:
+            report.append(f"  ⚠️ Status: {data_prep_eval.get('status', 'Unknown')}")
+        report.append("")
+        
+        # Phase 2: Column Mapping
+        report.append("## Phase 2: Column Mapping")
+        report.append("")
+        if column_mapping_eval.get("status") == "success":
+            metrics = column_mapping_eval.get("metrics", [])
+            for metric in metrics:
+                name = metric.get("name", "Unknown")
+                score = metric.get("score", 0.0)
+                success = metric.get("success", False)
+                status = "✅ PASS" if success else "❌ FAIL"
+                report.append(f"  - {name}: {score:.2%} {status}")
+                
+                # Show additional details for important metrics
+                if name == "Field Coverage" and "details" in metric:
+                    details = metric["details"]
+                    covered = details.get("covered_fields", 0)
+                    total = details.get("total_required_fields", 0)
+                    report.append(f"    └─ Fields: {covered}/{total} covered")
+        else:
+            report.append(f"  ⚠️ Status: {column_mapping_eval.get('status', 'Unknown')}")
+        report.append("")
+        
+        # Phase 3: Data Integration
+        report.append("## Phase 3: Data Integration")
+        report.append("")
+        if data_integration_eval.get("status") == "success":
+            metrics = data_integration_eval.get("metrics", [])
+            for metric in metrics:
+                name = metric.get("name", "Unknown")
+                score = metric.get("score", 0.0)
+                success = metric.get("success", False)
+                status = "✅ PASS" if success else "❌ FAIL"
+                report.append(f"  - {name}: {score:.2%} {status}")
+                
+                # Show data quality details
+                if name == "Data Quality" and "details" in metric:
+                    details = metric["details"]
+                    source_rows = details.get("source_rows", 0)
+                    final_rows = details.get("final_rows", 0)
+                    report.append(f"    └─ Rows: {final_rows}/{source_rows} preserved")
+        else:
+            report.append(f"  ⚠️ Status: {data_integration_eval.get('status', 'Unknown')}")
+        report.append("")
+        
+        # Generated Files
+        report.append("## Generated Files")
+        report.append("")
+        if isinstance(mapped_files, dict):
+            outputs = mapped_files.get("outputs", [])
+        elif isinstance(mapped_files, list):
+            outputs = mapped_files
+        else:
+            outputs = []
+        
+        if outputs:
+            report.append(f"Total: {len(outputs)} mapped CSV files")
+            report.append("")
+            for i, file_info in enumerate(outputs, 1):
+                if isinstance(file_info, dict):
+                    output_path = file_info.get("output_path", "N/A")
+                    columns = file_info.get("columns", [])
+                    report.append(f"{i}. {os.path.basename(output_path)}")
+                    report.append(f"   Columns: {', '.join(columns[:5])}" + ("..." if len(columns) > 5 else ""))
+        else:
+            report.append("⚠️ No files generated")
+        
+        report.append("")
+        report.append("=" * 70)
+        report.append("END OF REPORT")
+        report.append("=" * 70)
+        
+        return "\n".join(report)
+        
+    except Exception as exc:
+        print(f"TOOL ERROR in generate_final_workflow_report: {exc}")
+        import traceback
+        traceback.print_exc()
+        return f"Error generating final report: {str(exc)}"

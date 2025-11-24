@@ -104,6 +104,9 @@ After each agent completes, continue delegating in the prescribed order and repo
 """.strip()
 
     # Run the workflow starting with the orchestrator agent.
+    print("DEBUG: Starting Runner.run() with orchestrator agent")
+    print(f"DEBUG: Initial message length: {len(initial_message)} chars")
+    
     result = await Runner.run(
         orchestrator_agent,
         initial_message,
@@ -111,9 +114,37 @@ After each agent completes, continue delegating in the prescribed order and repo
         max_turns=100,  # Allow sufficient turns for multi-agent workflow
     )
     
+    print(f"DEBUG: Runner.run() completed with result type: {type(result).__name__}")
+    
     # Retrieve conversation history for logging
     all_messages = await session.get_items()
     print(f"\n\nWorkflow completed with {len(all_messages)} conversation turns")
+    
+    # Show detailed message flow for debugging
+    print("\nDEBUG: Last 15 Message Flow:")
+    for i, msg in enumerate(all_messages[-15:], start=max(1, len(all_messages)-14)):
+        msg_type = msg.get("type", "unknown")
+        role = msg.get("role", "unknown")
+        name = msg.get("name", "unknown")
+        
+        if msg_type == "tool_result":
+            output_preview = str(msg.get('output', ''))[:50]
+            print(f"  {i}. [TOOL RESULT] -> {output_preview}...")
+        elif "tool_calls" in msg:
+            tool_calls = msg.get("tool_calls", [])
+            for tc in tool_calls:
+                if isinstance(tc, dict):
+                    func = tc.get("function", {})
+                    func_name = func.get("name", "unknown")
+                    # Check if it's a handoff (transfer_to_*)
+                    if func_name.startswith("transfer_to_"):
+                        target_agent = func_name.replace("transfer_to_", "")
+                        print(f"  {i}. [{role}] {name} -> HANDOFF to {target_agent}")
+                    else:
+                        print(f"  {i}. [{role}] {name} -> TOOL: {func_name}")
+        else:
+            content = str(msg.get("content", ""))[:80]
+            print(f"  {i}. [{role}] {name} - {content}...")
     
     # Show agent interaction summary
     agent_counts = {}
@@ -154,7 +185,8 @@ def main() -> None:
     source_files: List[str] = []
     for file_path in default_files:
         if file_path.exists():
-            source_files.append(str(file_path))
+            # Convert to forward slashes to avoid LLM path confusion
+            source_files.append(str(file_path).replace('\\', '/'))
         else:
             print(f"⚠️  Warning: File not found: {file_path}")
 
@@ -174,7 +206,7 @@ def main() -> None:
             )
         )
     except Exception as exc:
-        print(f"\n❌ Workflow failed: {exc}")
+        print(f"\n[ERROR] Workflow failed: {exc}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
