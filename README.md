@@ -1,0 +1,354 @@
+<h1 align="center">
+  🔮 AI Forecasting Agents
+</h1>
+
+<p align="center">
+  <strong>End-to-end AI-powered demand forecasting with intelligent schema mapping</strong>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#documentation">Documentation</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue" alt="Python">
+  <img src="https://img.shields.io/badge/OpenAI-Agents%20SDK-412991" alt="OpenAI Agents">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  <img src="https://img.shields.io/badge/status-beta-orange" alt="Status">
+</p>
+
+---
+
+## Overview
+
+**AI Forecasting Agents** is a production-ready multi-agent system that automates the entire demand forecasting pipeline—from raw, heterogeneous retail data to trained, evaluated ML models. Built on the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python), it combines intelligent data transformation with state-of-the-art forecasting.
+
+### 🎯 The Problem
+
+Retail demand forecasting requires:
+1. **Data wrangling** — Mapping disparate data sources (transactions, products, stores, weather, economic indicators) into a unified schema
+2. **Model training** — Building and tuning ML models with proper evaluation
+3. **Iteration** — Continuously improving based on feedback
+
+This traditionally requires significant manual effort and domain expertise.
+
+### 💡 Our Solution
+
+Two intelligent agent systems that work together:
+
+| System | Purpose | Agents |
+|--------|---------|--------|
+| **Schema Mapping** | Transform any retail data into a standardized forecasting schema | DataPrep → ColumnMapping → DataIntegration (each with evaluators) |
+| **Demand Forecasting** | Train, evaluate, and optimize ML models | Training ↔ Evaluation (with automated feedback loops) |
+
+---
+
+## Features
+
+### 🗺️ Schema Mapping System
+- **Multi-agent orchestration** — Coordinated workflow with specialized agents
+- **Semantic understanding** — AI-powered column mapping that understands data meaning, not just names
+- **Chain-based evaluation** — Each agent has a dedicated evaluator for quality assurance
+- **Session memory** — SQLAlchemy-based context sharing across agents
+- **Jinja2 templating** — Customizable prompts for different use cases
+
+### 📈 Demand Forecasting System
+- **Multi-model support** — XGBoost, LightGBM, CatBoost, and ensemble methods
+- **Automated optimization** — Hyperparameter tuning via Optuna/Hyperopt
+- **Feedback loops** — Evaluation agent provides actionable improvements
+- **Feature engineering** — Automated feature creation based on model feedback
+- **Model interpretation** — SHAP and LIME for explainability
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        AI FORECASTING AGENTS                        │
+├─────────────────────────────────┬───────────────────────────────────┤
+│      SCHEMA MAPPING SYSTEM      │     DEMAND FORECASTING SYSTEM     │
+│                                 │                                   │
+│  ┌───────────────────────────┐  │  ┌─────────────────────────────┐  │
+│  │    Orchestrator Agent     │  │  │      Training Agent         │  │
+│  └─────────────┬─────────────┘  │  │  • Model configuration      │  │
+│                │                │  │  • Data preprocessing       │  │
+│       ┌────────┼────────┐       │  │  • Feature engineering      │  │
+│       ▼        ▼        ▼       │  │  • Hyperparameter tuning    │  │
+│  ┌─────────┐┌─────────┐┌─────┐  │  └──────────────┬──────────────┘  │
+│  │DataPrep ││ Column  ││Data │  │                 │                 │
+│  │ Agent   ││ Mapping ││Integ│  │                 ▼                 │
+│  └────┬────┘└────┬────┘└──┬──┘  │  ┌─────────────────────────────┐  │
+│       │          │        │     │  │     Evaluation Agent        │  │
+│       ▼          ▼        ▼     │  │  • Performance metrics      │  │
+│  ┌─────────┐┌─────────┐┌─────┐  │  │  • Convergence checking     │  │
+│  │Evaluator││Evaluator││Eval │  │  │  • Feedback generation      │  │
+│  └─────────┘└─────────┘└─────┘  │  └─────────────────────────────┘  │
+│                                 │                                   │
+└─────────────────────────────────┴───────────────────────────────────┘
+                                  │
+                                  ▼
+                    ┌─────────────────────────┐
+                    │   Standardized Schema   │
+                    │   + Trained Models      │
+                    └─────────────────────────┘
+```
+
+---
+
+## Installation
+
+### Prerequisites
+- Python 3.10, 3.11, or 3.12
+- [Poetry](https://python-poetry.org/) or [uv](https://github.com/astral-sh/uv)
+- OpenAI API key
+
+### Using Poetry
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/End-To-End-AI-Forecasting-Agent.git
+cd End-To-End-AI-Forecasting-Agent
+
+# Install dependencies
+poetry install
+
+# Activate the virtual environment
+poetry shell
+```
+
+### Using uv (faster)
+
+```bash
+# Clone and install
+git clone https://github.com/your-org/End-To-End-AI-Forecasting-Agent.git
+cd End-To-End-AI-Forecasting-Agent
+
+# Install with uv
+uv sync
+```
+
+### Environment Setup
+
+```bash
+# Copy the environment template
+cp .env.example .env
+
+# Edit with your API key
+echo "OPENAI_API_KEY=your-key-here" >> .env
+```
+
+---
+
+## Quick Start
+
+### 1️⃣ Schema Mapping
+
+Transform your retail data into the standardized demand forecasting schema:
+
+```bash
+# Run the schema mapper
+poetry run schema-mapper
+```
+
+Or programmatically:
+
+```python
+import asyncio
+from schema_mapping.run_workflow import run_full_workflow
+
+async def main():
+    result = await run_full_workflow(
+        source_files=[
+            "data/transaction_like_synth.csv",
+            "data/product_like_synth_wBrand.csv",
+            "data/store_like_synth.csv",
+            "data/weather_monthly.csv",
+        ],
+        row_limit=1000,
+        output_dir="output/mapped_data"
+    )
+    print(f"Mapping complete: {result}")
+
+asyncio.run(main())
+```
+
+### 2️⃣ Demand Forecasting
+
+Train and evaluate forecasting models:
+
+```bash
+# Run the forecasting pipeline
+python scripts/run_demand_forecasting.py
+```
+
+Or programmatically:
+
+```python
+from ai_forecasting_agents.demand_forecasting.agents import training_agent, evaluation_agent
+from agents import Runner
+
+async def train_models():
+    runner = Runner()
+    result = await runner.run(
+        training_agent,
+        input="Train XGBoost and LightGBM models on the mapped data",
+        context={
+            "input_file": "output/mapped_data/final_dataset.csv",
+            "output_dir": "output/training_results"
+        }
+    )
+    return result
+```
+
+---
+
+## Project Structure
+
+```
+End-To-End-AI-Forecasting-Agent/
+├── src/
+│   ├── schema_mapping/           # 🗺️ Data transformation system
+│   │   ├── agents/               # Agent definitions
+│   │   ├── evaluation/           # Evaluation metrics
+│   │   ├── prompts/              # Jinja2 prompt templates
+│   │   ├── schemas/              # Pydantic models
+│   │   ├── tools/                # Agent tool functions
+│   │   └── run_workflow.py       # Main entry point
+│   │
+│   └── ai_forecasting_agents/    # 📈 ML training system
+│       └── demand_forecasting/
+│           ├── agents/           # Training & evaluation agents
+│           ├── schemas/          # Model output schemas
+│           └── tools/            # ML functions
+│
+├── data/                         # Sample datasets
+├── templates/                    # Prompt templates
+├── docs/                         # Documentation
+├── scripts/                      # Utility scripts
+└── output/                       # Generated outputs
+```
+
+---
+
+## Target Schema
+
+The system maps data to this standardized demand forecasting schema:
+
+| Category | Key Fields |
+|----------|------------|
+| **Identifiers** | `date`, `product_id`, `store_id` |
+| **Sales** | `units_sold`, `unit_net_price` |
+| **Promotions** | `promotion_active`, `promotional_price`, `promotion_start_date` |
+| **Product** | `category`, `subcategory`, `is_seasonal_product` |
+| **Store** | `store_cluster`, `store_size_sqft`, `store_region` |
+| **Weather** | `avg_temperature_c`, `precipitation_mm` |
+| **Economic** | `unemployment_rate_monthly`, `cpi_monthly`, `gdp_monthly` |
+
+See [docs/demand_forecasting_schema.md](docs/demand_forecasting_schema.md) for the complete schema.
+
+---
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | Your OpenAI API key | ✅ |
+| `OPENAI_MODEL` | Model to use (default: `gpt-4o-mini`) | ❌ |
+| `LOG_LEVEL` | Logging level (default: `INFO`) | ❌ |
+
+### Prompt Customization
+
+Customize agent behavior via Jinja2 templates in `templates/prompt_sets/`:
+
+```
+templates/
+└── prompt_sets/
+    └── v1/
+        ├── column_mapping_user.j2
+        ├── dataprep_user.j2
+        └── integration_user.j2
+```
+
+---
+
+## Supported Models
+
+| Model | Type | Best For |
+|-------|------|----------|
+| **XGBoost** | Gradient Boosting | General purpose, fast |
+| **LightGBM** | Gradient Boosting | Large datasets, categorical features |
+| **CatBoost** | Gradient Boosting | Categorical-heavy data |
+| **Ensemble** | Stacking/Voting | Maximum accuracy |
+
+---
+
+## Development
+
+```bash
+# Install dev dependencies
+poetry install --with dev
+
+# Run tests
+pytest
+
+# Format code
+black src/
+isort src/
+
+# Type checking
+mypy src/
+
+# Linting
+ruff check src/
+```
+
+---
+
+## Roadmap
+
+- [ ] 🌐 REST API for model serving
+- [ ] 📊 Streamlit dashboard for visualization
+- [ ] 🔄 Real-time inference pipeline
+- [ ] 📦 Docker deployment
+- [ ] 🧪 Expanded test coverage
+
+---
+
+## Contributing
+
+We welcome contributions! Please see our contributing guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## Authors
+
+- **Katherine Gong** — Schema Mapping System
+- **Ayda Elzohbi** — Demand Forecasting System
+- **Arturo Medina** — ML Pipeline
+- **Arial Huang** — Data Engineering
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<p align="center">
+  Built with ❤️ using <a href="https://github.com/openai/openai-agents-python">OpenAI Agents SDK</a>
+</p>
+
