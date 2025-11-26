@@ -1,0 +1,16 @@
+{
+  "model_name": "catboost_model_20251029162637",
+  "model_type": "catboost",
+  "model_uuid": "20251029162637",
+  "model_filename": "catboost_model_20251029162637.pkl",
+  "rmse": 2.0197577041387778,
+  "r2": 0.8998602284958254,
+  "mae": 1.3847043708136397,
+  "mape": 1.0,
+  "overall_score": 62.33809436787029,
+  "iteration": 2,
+  "saved_at": "2025-10-29T16:29:36.283431",
+  "inference_path": "output/inference/inference/20251029162637/best_catboost_model_20251029162637.pkl",
+  "source_path": "output/training_results/models/20251029162637/catboost_model_20251029162637.pkl",
+  "models_directory": "output/training_results/models/20251029162637"
+}

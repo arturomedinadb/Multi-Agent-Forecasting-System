@@ -1,0 +1,16 @@
+{
+  "model_name": "xgboost_model_20251028175619",
+  "model_type": "xgboost",
+  "model_uuid": "20251028175619",
+  "model_filename": "xgboost_model_20251028175619.pkl",
+  "rmse": 0.09057916908754762,
+  "r2": 0.999798595905304,
+  "mae": 0.069,
+  "mape": 0.06,
+  "overall_score": 97.0,
+  "iteration": 3,
+  "saved_at": "2025-10-28T18:08:38.800394",
+  "inference_path": "output/inference/inference/20251028175619/best_xgboost_model_20251028175619.pkl",
+  "source_path": "output/training_results/models/20251028175619/xgboost_model_20251028175619.pkl",
+  "models_directory": "output/training_results/models/20251028175619"
+}

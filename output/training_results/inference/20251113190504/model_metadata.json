@@ -1,0 +1,33 @@
+{
+  "model_name": "lightgbm_model_20251113190504",
+  "model_type": "lightgbm",
+  "model_uuid": "20251113190504",
+  "model_filename": "best_lightgbm_model_20251113190504.pkl",
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "num_leaves": 31,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42
+  },
+  "training_data": "combined_train_val",
+  "train_size": 1246848,
+  "val_size": 311712,
+  "combined_size": 1558560,
+  "training_time_seconds": 7.343251,
+  "validation_rmse": 1.942767154497574,
+  "validation_r2": 0.8921147109422916,
+  "validation_mae": 1.3835576022606706,
+  "validation_mape": 0.0,
+  "validation_overall_score": 62.24546747688083,
+  "combined_data_rmse": 1.931216253868918,
+  "combined_data_r2": 0.8989337759647229,
+  "iteration": 1,
+  "saved_at": "2025-11-13T19:06:46.443983",
+  "inference_path": "output/training_results/inference/20251113190504/best_lightgbm_model_20251113190504.pkl",
+  "models_directory": "output/training_results/models/20251113190504",
+  "retrained": true,
+  "note": "Model retrained on combined train+val data for inference"
+}
