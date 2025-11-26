@@ -20,6 +20,7 @@ from ..tools.functions import (
     generate_summary_report,
     generate_final_workflow_report,
     query_conversation_history,
+    get_all_dataset_metadata,
 )
 
 
@@ -85,7 +86,7 @@ data_prep_agent = Agent(
     You are DONE when you have called transfer_to_data_prep_evaluation_agent.
     After the handoff, do NOT call any more tools or provide any more responses.
     """,
-    tools=[load_and_describe_dataset],
+    tools=[load_and_describe_dataset],  # Will add save_metadata_to_file tool
     handoffs=[],  # Set after all agents are defined
 )
 
@@ -113,13 +114,52 @@ column_mapping_agent = Agent(
     - Geographic hierarchies (store locations, regions)
     - Economic indicators (CPI, GDP, unemployment)
 
-    WORKFLOW:
-    1. First, check if you have source metadata from the handoff. If not, either:
-       - Call query_conversation_history(agent_filter="DataPrepAgent") to retrieve it
-       - Or call load_and_describe_dataset for each source file to reload metadata
-    2. Create your mapping plan based on the metadata
-    3. Call generate_mapped_csvs with the metadata JSON array and mapping plan
-    4. Hand off to evaluator
+    WORKFLOW INSTRUCTIONS (FOLLOW EXACTLY IN ORDER):
+    
+    STEP 1: GET ALL DATASET METADATA
+    ===========================================================================
+    Your FIRST action MUST be: get_all_dataset_metadata()
+    
+    This returns a JSON object with:
+    {
+      "status": "success",
+      "dataset_count": 10,
+      "metadata": [array of 10 metadata objects]
+    }
+    
+    Extract the "metadata" array - this contains ALL 10 source datasets.
+    Verify you have 10 entries. If not, something went wrong.
+    
+    STEP 2: CREATE SEMANTIC MAPPINGS FOR ALL 10 DATASETS
+    ===========================================================================
+    For EACH of the 10 datasets, analyze columns and create mappings to the target schema.
+    
+    Your mapping JSON MUST use per-file format:
+    {
+      "mappings": [
+        {
+          "source_file": "/full/path/to/file1.csv",
+          "mappings": [
+            {"source_column": "...", "target_column": "...", "confidence": 0.95, "reasoning": "..."},
+            ...
+          ]
+        },
+        ... (repeat for ALL 10 files - transaction, product, store, holidays, promotion, weather, CPI, employment, GDP, population)
+      ]
+    }
+    
+    STEP 3: GENERATE MAPPED CSVs
+    ===========================================================================
+    Call generate_mapped_csvs with:
+    1. source_metadata_json: JSON.stringify(metadata array from Step 1)
+    2. mappings_json: JSON.stringify(your mapping plan from Step 2)
+    3. output_dir: The specified output directory
+    
+    STEP 4: HAND OFF TO EVALUATOR
+    ===========================================================================
+    Call transfer_to_column_mapping_evaluation_agent with the results.
+    
+    STOPPING CONDITION: You are DONE after Step 4.
 
     JSON OUTPUT REQUIREMENTS (CRITICAL - READ CAREFULLY):
     - ALL JSON must be STRICTLY valid with proper escaping
@@ -154,7 +194,7 @@ column_mapping_agent = Agent(
     Pass both the mapping plan and tool response as the handoff payload.
     Do NOT call transfer_to_workflow_orchestrator - the evaluator will do that after evaluation.
     """,
-    tools=[generate_mapped_csvs, load_and_describe_dataset, query_conversation_history],
+    tools=[get_all_dataset_metadata, generate_mapped_csvs, load_and_describe_dataset, query_conversation_history],
     handoffs=[],  # Set after all agents are defined
 )
 
