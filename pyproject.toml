@@ -168,14 +168,16 @@ Issues = "https://github.com/your-org/ai_forecasting_agents/issues"
 Changelog = "https://github.com/your-org/ai_forecasting_agents/blob/main/CHANGELOG.md"
 
 [project.scripts]
-schema-mapper = "ai_forecasting_agents.schema_mapping.run_workflow:main"
-inspect-sessions = "ai_forecasting_agents.schema_mapping.session_inspector:main"
+# Schema Mapping (Katherine's work)
+schema-mapper = "schema_mapping.run_workflow:main"
+inspect-sessions = "schema_mapping.session_inspector:main"
+# Demand Forecasting (colleague's work)
 feature-engineer = "ai_forecasting_agents.demand_forecasting.run_feature_engineering:main"
 train-models = "scripts.run_training:main"
 run-pipeline = "scripts.run_complete_pipeline:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ai_forecasting_agents"]
+packages = ["src/ai_forecasting_agents", "src/schema_mapping"]
 
 [tool.pytest.ini_options]
 testpaths = []
@@ -291,4 +293,7 @@ ignore_missing_imports = true
 jinja2 = "^3.1.4"
 
 [tool.poetry]
-packages = [{ include = "ai_forecasting_agents", from = "src" }]
+packages = [
+    { include = "ai_forecasting_agents", from = "src" },
+    { include = "schema_mapping", from = "src" }
+]
