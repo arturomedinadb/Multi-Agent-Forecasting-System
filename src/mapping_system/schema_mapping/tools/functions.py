@@ -1,5 +1,16 @@
+"""
+Tool functions for the schema mapping workflow.
+
+This module provides tools for:
+- Data preparation (loading and describing datasets)
+- Column mapping (generating mapped CSVs)
+- Data integration (merging mapped CSVs)
+- Evaluation (DeepEval metrics and summary reports)
+- Session history (querying conversation context)
+"""
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -10,6 +21,122 @@ from ..schemas.models import DemandForecastingRecord, ColumnMapping, MappingResu
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+
+# === Session History Tool ===
+
+@function_tool
+def query_conversation_history(
+    limit: int = 10,
+    agent_filter: Optional[str] = None,
+    include_tool_calls: bool = False,
+) -> str:
+    """
+    Query conversation history from the current workflow session.
+    
+    Use this tool to understand what previous agents have done, review their outputs,
+    or check for errors in earlier steps of the workflow.
+    
+    Args:
+        limit: Maximum number of messages to retrieve (default: 10, max: 50)
+        agent_filter: Optional filter by agent name (e.g., "DataPrepAgent", "ColumnMappingAgent")
+        include_tool_calls: Whether to include tool call messages (default: False, only assistant messages)
+    
+    Returns:
+        JSON array of messages with role, agent name, content preview, and timestamp.
+        Messages are ordered from most recent to oldest.
+    
+    Example usage:
+        - query_conversation_history(limit=5) - Get last 5 messages
+        - query_conversation_history(agent_filter="DataPrepAgent") - Get DataPrepAgent messages
+        - query_conversation_history(include_tool_calls=True) - Include tool call details
+    """
+    # Get session info from environment
+    session_id = os.getenv("CURRENT_SESSION_ID")
+    output_dir = os.getenv("AGENT_OUTPUT_DIR", str(PROJECT_ROOT / "output"))
+    db_path = os.path.join(output_dir, "workflow_sessions.db")
+    
+    if not session_id:
+        return json.dumps({
+            "status": "error",
+            "error": "No active session. CURRENT_SESSION_ID not set.",
+            "messages": []
+        })
+    
+    if not os.path.exists(db_path):
+        return json.dumps({
+            "status": "error", 
+            "error": f"Session database not found at {db_path}",
+            "messages": []
+        })
+    
+    # Clamp limit to reasonable range
+    limit = min(max(1, limit), 50)
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Check if table exists
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='messages'"
+        )
+        if cursor.fetchone() is None:
+            conn.close()
+            return json.dumps({
+                "status": "error",
+                "error": "Messages table not found in database",
+                "messages": []
+            })
+        
+        # Build query
+        query = """
+            SELECT role, name, content, type
+            FROM messages 
+            WHERE session_id = ?
+        """
+        params: List[Any] = [session_id]
+        
+        if agent_filter:
+            query += " AND name = ?"
+            params.append(agent_filter)
+        
+        if not include_tool_calls:
+            query += " AND (role = 'assistant' OR role = 'user')"
+        
+        query += f" ORDER BY rowid DESC LIMIT {limit}"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Format results
+        messages = []
+        for role, name, content, msg_type in rows:
+            # Truncate long content
+            content_str = str(content) if content else ""
+            preview = content_str[:300] + "..." if len(content_str) > 300 else content_str
+            
+            messages.append({
+                "role": role or "unknown",
+                "agent": name or "unknown",
+                "type": msg_type or "message",
+                "content_preview": preview,
+            })
+        
+        return json.dumps({
+            "status": "success",
+            "session_id": session_id,
+            "message_count": len(messages),
+            "messages": messages
+        }, indent=2)
+        
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "error": str(e),
+            "messages": []
+        })
 
 
 # === Helper Functions ===
@@ -204,22 +331,67 @@ def run_generate_mapped_csvs(
     try:
         os.makedirs(output_dir, exist_ok=True)
         
-        # If it's already a dict/list, don't parse it
-        if isinstance(source_metadata_json, (dict, list)):
-            source_meta = source_metadata_json if isinstance(source_metadata_json, list) else [source_metadata_json]
-        else:
-            # Fix Windows backslashes: replace single backslash with forward slash
-            # This handles cases where LLM puts raw Windows paths in JSON
+        # Robust parsing of source metadata - handle various input formats
+        source_meta: List[Dict[str, Any]] = []
+        
+        if isinstance(source_metadata_json, list):
+            # Already a list - process each item
+            for item in source_metadata_json:
+                if isinstance(item, dict):
+                    source_meta.append(item)
+                elif isinstance(item, str):
+                    # Item is a JSON string - parse it
+                    try:
+                        parsed = json.loads(item)
+                        if isinstance(parsed, dict):
+                            source_meta.append(parsed)
+                        elif isinstance(parsed, list):
+                            source_meta.extend([x for x in parsed if isinstance(x, dict)])
+                    except json.JSONDecodeError:
+                        print(f"DEBUG: Could not parse metadata item as JSON: {item[:100]}...")
+        elif isinstance(source_metadata_json, dict):
+            source_meta = [source_metadata_json]
+        elif isinstance(source_metadata_json, str):
+            # Fix Windows backslashes and parse JSON string
             cleaned_source = source_metadata_json.replace('\\', '/')
-            source_meta = json.loads(_sanitize_json_string(cleaned_source)) or []
+            cleaned_source = _sanitize_json_string(cleaned_source)
+            try:
+                parsed = json.loads(cleaned_source)
+                if isinstance(parsed, list):
+                    # Recursively process - items might be JSON strings too
+                    for item in parsed:
+                        if isinstance(item, dict):
+                            source_meta.append(item)
+                        elif isinstance(item, str):
+                            try:
+                                inner_parsed = json.loads(item)
+                                if isinstance(inner_parsed, dict):
+                                    source_meta.append(inner_parsed)
+                            except json.JSONDecodeError:
+                                pass
+                elif isinstance(parsed, dict):
+                    source_meta = [parsed]
+            except json.JSONDecodeError as e:
+                print(f"DEBUG: Failed to parse source_metadata_json: {e}")
+                print(f"DEBUG: Input preview: {cleaned_source[:500]}...")
         
-        # DEBUG: Show input
+        # Debug output
+        print(f"DEBUG run_generate_mapped_csvs: Parsed {len(source_meta)} metadata entries")
+        if source_meta:
+            print(f"DEBUG run_generate_mapped_csvs: First entry keys: {list(source_meta[0].keys()) if source_meta else 'N/A'}")
         
+        # Parse mappings JSON
         if isinstance(mappings_json, dict):
             raw_mappings = mappings_json
+            print(f"DEBUG run_generate_mapped_csvs: mappings_json is already a dict")
+        elif isinstance(mappings_json, list):
+            raw_mappings = {"mappings": mappings_json}
+            print(f"DEBUG run_generate_mapped_csvs: mappings_json is a list with {len(mappings_json)} items")
         else:
             cleaned_mappings = mappings_json.replace('\\', '/')
             cleaned_mappings = _sanitize_json_string(cleaned_mappings)
+            print(f"DEBUG run_generate_mapped_csvs: mappings_json is a string, length={len(cleaned_mappings)}")
+            print(f"DEBUG run_generate_mapped_csvs: mappings preview: {cleaned_mappings[:300]}...")
             
             # Try parsing with error diagnostics
             try:
@@ -242,6 +414,7 @@ def run_generate_mapped_csvs(
                     raise json_err  # Re-raise original error
             
         mapping_payload = _ensure_mapping_dict(raw_mappings)
+        print(f"DEBUG run_generate_mapped_csvs: mapping_payload keys: {list(mapping_payload.keys())}")
     except Exception as e:
         print(f"TOOL ERROR in generate_mapped_csvs: Invalid JSON input - {e}")
         import traceback
@@ -250,6 +423,8 @@ def run_generate_mapped_csvs(
 
     # Accept both "mappings" and "columns" as valid top-level keys
     mapping_entries = mapping_payload.get("mappings") or mapping_payload.get("columns", [])
+    print(f"DEBUG run_generate_mapped_csvs: Found {len(mapping_entries)} mapping entries")
+    
     per_file: Dict[str, List[Dict[str, Any]]] = {}
     fallback: List[Dict[str, Any]] = []
     results: List[Dict[str, Any]] = []
@@ -273,6 +448,10 @@ def run_generate_mapped_csvs(
         elif entry.get("source_column") and entry.get("target_column"):
             fallback.append(entry)
     
+    print(f"DEBUG run_generate_mapped_csvs: per_file has {len(per_file)} entries, fallback has {len(fallback)} entries")
+    if per_file:
+        print(f"DEBUG run_generate_mapped_csvs: per_file keys: {list(per_file.keys())[:5]}...")
+    
     results: List[Dict[str, Any]] = []
 
     row_limit = _get_row_limit()
@@ -280,7 +459,7 @@ def run_generate_mapped_csvs(
     for meta in source_meta:
         # Safety check: ensure meta is a dict
         if not isinstance(meta, dict):
-            print(f"TOOL WARNING: Skipping non-dict metadata entry: {type(meta).__name__}")
+            print(f"TOOL WARNING: Skipping non-dict metadata entry: {type(meta).__name__} - value preview: {str(meta)[:100]}")
             continue
             
         path = meta.get("file_path")
