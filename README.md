@@ -17,15 +17,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue" alt="Python">
   <img src="https://img.shields.io/badge/OpenAI-Agents%20SDK-412991" alt="OpenAI Agents">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/status-beta-orange" alt="Status">
 </p>
 
 ---
 
 ## Overview
 
-**AI Forecasting Agents** is a production-ready multi-agent system that automates the entire demand forecasting pipeline—from raw, heterogeneous retail data to trained, evaluated ML models. Built on the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python), it combines intelligent data transformation with state-of-the-art forecasting.
+**AI Forecasting Agents** is a multi-agent system that automates the entire demand forecasting pipeline—from raw, heterogeneous retail data to trained, evaluated ML models. Built on the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python), it combines intelligent data transformation with state-of-the-art forecasting.
 
 ### 🎯 The Problem
 
