@@ -1,6 +1,11 @@
 """
 Main entry point for the schema mapping workflow using orchestrator pattern.
 
+This module implements a multi-agent workflow for schema mapping with:
+- Chain-based handoffs (Agent → Evaluator → Orchestrator)
+- SQLAlchemy session memory for context sharing
+- OpenAI Agents SDK tracing for debugging
+
 Usage:
     poetry run schema-mapper
 
@@ -11,12 +16,13 @@ import asyncio
 import json
 import os
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
 from dotenv import load_dotenv
-from agents import Runner
+from agents import Runner, trace
 from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 
 from .agents.definitions import create_workflow_orchestrator_agent
@@ -35,17 +41,41 @@ async def run_full_workflow(
     row_limit: int = 10,
     output_dir: str | None = None,
 ) -> dict:
-    """Execute the schema mapping workflow using orchestrator agent with session memory."""
+    """
+    Execute the schema mapping workflow using orchestrator agent with session memory and tracing.
+    
+    This workflow uses a chain-based handoff pattern:
+    - Orchestrator → Work Agents (DataPrep, ColumnMapping, DataIntegration)
+    - Work Agents → Their Evaluation Agents
+    - Evaluation Agents → Back to Orchestrator
+    
+    Args:
+        source_files: List of CSV file paths to process
+        row_limit: Number of rows to sample per dataset (default: 10)
+        output_dir: Output directory for results (default: PROJECT_ROOT/output)
+    
+    Returns:
+        Dictionary with workflow results including session_id, conversation_id, and outputs
+    """
     resolved_output = output_dir or str(PROJECT_ROOT / "output")
     
     # Create output directory for session database
     os.makedirs(resolved_output, exist_ok=True)
     
-    # Generate a unique session ID for this workflow run
+    # Generate unique IDs for this workflow run
+    # - conversation_id: UUID for trace grouping (links all traces in this run)
+    # - session_id: Timestamp-based ID for session database
+    conversation_id = str(uuid.uuid4().hex[:16])
     session_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     
+    # Store IDs in environment for tools to access
+    os.environ["CONVERSATION_ID"] = conversation_id
+    os.environ["CURRENT_SESSION_ID"] = session_id
+    os.environ["AGENT_ROW_LIMIT"] = str(row_limit)
+    os.environ["AGENT_OUTPUT_DIR"] = resolved_output
+    
     # Create SQLAlchemy session for conversation memory
-    # This allows the orchestrator to remember all agent interactions
+    # This allows agents to share context and query history
     db_path = f"{resolved_output}/workflow_sessions.db"
     session = SQLAlchemySession.from_url(
         session_id=session_id,
@@ -57,16 +87,13 @@ async def run_full_workflow(
     print("SCHEMA MAPPING AGENT WORKFLOW")
     print("=" * 70)
     print(f"\nSession ID: {session_id}")
+    print(f"Trace ID: {conversation_id}")
     print(f"Session DB: {db_path}")
     print(f"\nProcessing {len(source_files)} datasets:")
     for file_path in source_files:
         print(f"  - {Path(file_path).name}")
     print(f"\nSampling {row_limit} rows per dataset")
     print(f"Output directory: {resolved_output}\n")
-
-    # Set environment variables for agent tools
-    os.environ["AGENT_ROW_LIMIT"] = str(row_limit)
-    os.environ["AGENT_OUTPUT_DIR"] = resolved_output
 
     # Get target schema
     target_schema_dict = DemandForecastingRecord.model_json_schema()
@@ -99,20 +126,25 @@ Settings:
 Target schema (JSON):
 {target_schema_json}
 
-Your first response MUST be a call to transfer_to_data_prep_agent using this request.
-After each agent completes, continue delegating in the prescribed order and report the final results.
+Begin by calling transfer_to_data_prep_agent to start the data preparation phase.
+Each work agent will automatically hand off to its evaluator, which will return to you.
+After all three phases complete (DataPrep → ColumnMapping → DataIntegration), 
+call generate_final_workflow_report with all evaluation results.
 """.strip()
 
-    # Run the workflow starting with the orchestrator agent.
-    print("DEBUG: Starting Runner.run() with orchestrator agent")
+    # Run the workflow with tracing enabled
+    # The trace context groups all agent interactions under a single conversation_id
+    print(f"DEBUG: Starting traced workflow run")
+    print(f"DEBUG: Trace ID: {conversation_id}")
     print(f"DEBUG: Initial message length: {len(initial_message)} chars")
     
-    result = await Runner.run(
-        orchestrator_agent,
-        initial_message,
-        session=session,
-        max_turns=100,  # Allow sufficient turns for multi-agent workflow
-    )
+    with trace("Schema Mapping Workflow", group_id=conversation_id):
+        result = await Runner.run(
+            orchestrator_agent,
+            initial_message,
+            session=session,
+            max_turns=100,  # Allow sufficient turns for multi-agent workflow
+        )
     
     print(f"DEBUG: Runner.run() completed with result type: {type(result).__name__}")
     
@@ -159,6 +191,7 @@ After each agent completes, continue delegating in the prescribed order and repo
     return {
         "status": "success",
         "session_id": session_id,
+        "conversation_id": conversation_id,
         "output_dir": resolved_output,
         "db_path": db_path,
         "total_turns": len(all_messages),
@@ -215,10 +248,16 @@ def main() -> None:
     print("WORKFLOW COMPLETE")
     print("=" * 70)
     print(f"\nSession ID: {result.get('session_id')}")
+    print(f"Trace ID: {result.get('conversation_id')}")
     print(f"Session DB: {result.get('db_path')}")
     print(f"Total conversation turns: {result.get('total_turns')}")
+    
+    print("\nAgent Interactions:")
+    for agent, count in sorted(result.get('agent_interactions', {}).items()):
+        print(f"  {agent}: {count} messages")
+    
     print(f"\nOutput directory: {result.get('output_dir')}")
-    print(f"Final output: {result.get('final_output')}")
+    print(f"\nFinal output:\n{result.get('final_output')}")
     print("\n" + "=" * 70 + "\n")
 
     sys.exit(0)

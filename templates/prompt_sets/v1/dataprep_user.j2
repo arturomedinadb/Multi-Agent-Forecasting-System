@@ -38,14 +38,14 @@ Aggregate all results into a single JSON array with this structure:
 - Ensure no files are skipped
 - Include error entries for any failed files
 
-### 4. COMPLETE AND HAND OFF
+### 4. HANDOFF TO EVALUATOR
 After analyzing all files:
-1. Return the complete JSON array with metadata for all {{source_files|length}} files
-2. **IMMEDIATELY transfer to DataPrepEvaluationAgent** to evaluate your work
+1. Compile the complete JSON array with metadata for all {{source_files|length}} files
+2. **IMMEDIATELY call `transfer_to_data_prep_evaluation_agent`** with the results
 
-The evaluation agent will assess quality, then pass to column mapping.
-
-**Use the transfer function to hand off to DataPrepEvaluationAgent when complete.**
+**CRITICAL**: Do NOT call `transfer_to_workflow_orchestrator` - you hand off to your evaluator.
+The evaluator will assess quality and then hand off to the orchestrator.
 
 ---
 **Quality Standards**: Complete coverage, accurate dtypes, clean JSON, no missing files
+**Handoff Target**: DataPrepEvaluationAgent (automatic - orchestrator will receive evaluation results)
