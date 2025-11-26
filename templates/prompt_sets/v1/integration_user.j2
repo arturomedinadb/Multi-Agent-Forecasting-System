@@ -40,24 +40,14 @@ Call `merge_mapped_csvs_to_target` with:
 - **target_schema_json**: The target schema JSON above
 - **output_path**: `{{ output_path }}`
 
-### 5. VERIFY & REPORT
-After tool execution:
-- Confirm file created at `{{ output_path }}`
-- Report statistics: total rows, total columns
-- List any columns that were added as None (missing from all sources)
+### 5. HANDOFF TO EVALUATOR
+After executing the merge:
+1. Compile the merge result JSON
+2. **IMMEDIATELY call `transfer_to_data_integration_evaluation_agent`** with the results
 
-### 6. OUTPUT FORMAT
-Print the tool's JSON response, which should contain:
-```json
-{
-  "status": "Success",
-  "output_path": "{{ output_path }}",
-  "rows": <count>,
-  "columns": [list of column names]
-}
-```
-
-End with: "Integration complete - final mapped dataset created"
+**CRITICAL**: Do NOT call `transfer_to_workflow_orchestrator` - you hand off to your evaluator.
+The evaluator will validate the final dataset and then hand off to the orchestrator.
 
 ---
 **Merge Keys**: date, product_id, store_id, store_region | **Schema Compliance**: 100% target coverage
+**Handoff Target**: DataIntegrationEvaluationAgent (automatic - orchestrator will receive evaluation results)

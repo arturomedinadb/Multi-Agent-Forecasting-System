@@ -11,15 +11,28 @@ Create intelligent column mappings between source datasets and target demand for
 
 ## Execution Steps
 
-### 1. SEMANTIC ANALYSIS
-For each source dataset, analyze columns and map to target schema:
+### STEP 0: ENSURE YOU HAVE METADATA
+If the source metadata above is empty or you don't have it:
+- Call `query_conversation_history(agent_filter="DataPrepAgent", limit=20)` to retrieve it
+- Or call `load_and_describe_dataset(file_path=<path>)` for each source file
+
+The metadata should be a JSON array like:
+```json
+[
+  {"file_path": "...", "columns": [...], "dtypes": {...}, "sample": [...]},
+  ...
+]
+```
+
+### STEP 1: SEMANTIC ANALYSIS
+For each source dataset in the metadata, analyze columns and map to target schema:
 - **Prioritize semantic meaning** over syntactic similarity
 - Consider **business context**: retail, sales, inventory, promotions, geography
 - Identify synonyms: `prod_code` → `product_id`, `qty_sold` → `units_sold`, etc.
 - Match temporal patterns: `transaction_date` → `date`
 - Map hierarchies: `location_region` → `store_region`
 
-### 2. CONFIDENCE SCORING
+### STEP 2: CONFIDENCE SCORING
 Assign confidence scores (0.0-1.0) to each mapping:
 - **1.0**: Perfect semantic match (e.g., `date` → `date`)
 - **0.9**: Strong semantic match with clear business meaning
@@ -27,7 +40,7 @@ Assign confidence scores (0.0-1.0) to each mapping:
 - **0.5-0.6**: Weak match, needs verification
 - **< 0.5**: Do NOT include (skip these mappings)
 
-### 3. CREATE MAPPING PLAN
+### STEP 3: CREATE MAPPING PLAN
 Generate a JSON mapping plan with this **EXACT** structure:
 
 **JSON FORMATTING RULES - STRICTLY ENFORCE:**
@@ -35,41 +48,20 @@ Generate a JSON mapping plan with this **EXACT** structure:
 - Use ONLY double quotes (") for all strings, never single quotes (')
 - NO trailing commas after last array/object element
 - NO comments (//) anywhere in JSON
-- NO unescaped quotes inside strings
-- Escape special characters properly: \" \\ \n \t
-- Each reasoning string must be on a single line (no line breaks inside strings)
-- Validate JSON structure before submitting to tool
-- Copy file paths EXACTLY as they appear in the source metadata (including "Documentos" if present)
+- Copy file paths EXACTLY from the source metadata JSON
 
 **EXACT FORMAT - DO NOT DEVIATE:**
 ```json
 {
   "mappings": [
     {
-      "source_file": "C:/path/to/transaction_data.csv",
+      "source_file": "/full/path/to/transaction_data.csv",
       "mappings": [
         {
           "source_column": "transaction_date",
           "target_column": "date",
           "confidence": 0.95,
           "reasoning": "Direct temporal field match"
-        },
-        {
-          "source_column": "prod_code",
-          "target_column": "product_id",
-          "confidence": 0.9,
-          "reasoning": "Product identifier - standard retail convention"
-        }
-      ]
-    },
-    {
-      "source_file": "C:/path/to/products.csv",
-      "mappings": [
-        {
-          "source_column": "product_name",
-          "target_column": "category",
-          "confidence": 0.7,
-          "reasoning": "Product categorization field"
         }
       ]
     }
@@ -77,47 +69,27 @@ Generate a JSON mapping plan with this **EXACT** structure:
 }
 ```
 
-**CRITICAL**: 
-- Group mappings by source_file - each file gets its own entry in the mappings array
-- Each source_file entry must have a "mappings" array with that file's column mappings
-- Copy file paths EXACTLY from the source metadata JSON (preserve "Documentos", forward slashes, etc.)
-- Only include mappings with confidence > 0.5
-- Ensure JSON is 100% valid before calling generate_mapped_csvs tool
+### STEP 4: GENERATE MAPPED CSVs
+Call `generate_mapped_csvs` with THREE arguments:
+1. **source_metadata_json**: The FULL metadata JSON array (not just file paths!)
+2. **mappings_json**: Your mapping plan JSON from Step 3
+3. **output_dir**: `{{ mapped_dir }}`
 
-### 4. GENERATE MAPPED CSVs
-Call `generate_mapped_csvs` with:
-- **source_metadata_json**: The dataset metadata JSON from above
-- **mappings_json**: Your mapping plan JSON
-- **output_dir**: `{{ mapped_dir }}`
-
-### 5. OUTPUT FORMAT
-Structure your response as:
-
-**Mapping Plan**
+**IMPORTANT**: The source_metadata_json must be the complete array of metadata objects, like:
 ```json
-{
-  "mappings": [
-    {
-      "source_file": "path/to/file.csv",
-      "mappings": [{"source_column": "...", "target_column": "...", "confidence": 0.9}]
-    }
-  ]
-}
+[
+  {"file_path": "...", "shape": [...], "columns": [...], "dtypes": {...}, "sample": [...]},
+  ...
+]
 ```
 
-**Tool Output** (after calling generate_mapped_csvs)
-```json
-{
-  "outputs": [
-    {"source_file": "...", "output_path": "...", "columns": [...]},
-    ...
-  ]
-}
-```
+### STEP 5: HANDOFF TO EVALUATOR
+After generating mapped CSVs:
+1. Compile both the mapping plan and tool output
+2. **IMMEDIATELY call `transfer_to_column_mapping_evaluation_agent`** with the results
 
-Then call `transfer_to_workflow_orchestrator` to hand off the results back to the orchestrator.
-
-**DO NOT** post verbose explanations - just create the mapping plan, call the tool, and hand off to orchestrator.
+**CRITICAL**: Do NOT call `transfer_to_workflow_orchestrator` - you hand off to your evaluator.
 
 ---
 **Mapping Strategy**: Semantic meaning > syntax | Business context matters | Confidence threshold: 0.5
+**Handoff Target**: ColumnMappingEvaluationAgent

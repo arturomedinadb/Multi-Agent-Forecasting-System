@@ -1,4 +1,12 @@
-"""Agent instructions and tool bindings for the schema mapping workflow."""
+"""Agent instructions and tool bindings for the schema mapping workflow.
+
+This module implements a chain-based handoff pattern:
+- Orchestrator → Work Agents (DataPrep, ColumnMapping, DataIntegration)
+- Work Agents → Their Evaluation Agents
+- Evaluation Agents → Back to Orchestrator
+
+This ensures deterministic flow: Agent → Evaluator → Orchestrator
+"""
 from agents import Agent
 
 from ..tools.functions import (
@@ -11,6 +19,7 @@ from ..tools.functions import (
     validate_final_dataset,
     generate_summary_report,
     generate_final_workflow_report,
+    query_conversation_history,
 )
 
 
@@ -48,15 +57,19 @@ data_prep_agent = Agent(
     STEP 1: Call load_and_describe_dataset for EACH file in the list (ONE call per file)
     STEP 2: STOP and WAIT for ALL tool results to return
     STEP 3: Check if you have results for ALL files in the source list
-    STEP 4: If YES -> IMMEDIATELY call transfer_to_workflow_orchestrator with the complete JSON array
+    STEP 4: If YES -> IMMEDIATELY call transfer_to_data_prep_evaluation_agent with the complete JSON array
     STEP 5: If NO -> Call load_and_describe_dataset ONLY for missing files
     
     CRITICAL RULES:
     - NEVER call load_and_describe_dataset more than ONCE per file path
     - NEVER call load_and_describe_dataset if you already have results for that file
     - NEVER provide text commentary after receiving tool results
-    - ALWAYS call transfer_to_workflow_orchestrator as your FINAL action
-    - The handoff to orchestrator is MANDATORY - do NOT end without it
+    - ALWAYS call transfer_to_data_prep_evaluation_agent as your FINAL action
+    - The handoff to evaluator is MANDATORY - do NOT end without it
+    
+    HANDOFF PROTOCOL:
+    After completing data preparation, you MUST call transfer_to_data_prep_evaluation_agent.
+    Do NOT call transfer_to_workflow_orchestrator - the evaluator will do that after evaluation.
     
     EXAMPLE WORKFLOW:
     Input: ["file1.csv", "file2.csv"]
@@ -65,15 +78,15 @@ data_prep_agent = Agent(
     Wait for results...
     Result 1: {"file_path": "file1.csv", ...}
     Result 2: {"file_path": "file2.csv", ...}
-    Action 3: transfer_to_workflow_orchestrator([result1, result2])
+    Action 3: transfer_to_data_prep_evaluation_agent([result1, result2])
     DONE - do NOT call any more tools
     
     STOPPING CONDITION:
-    You are DONE when you have called transfer_to_workflow_orchestrator.
+    You are DONE when you have called transfer_to_data_prep_evaluation_agent.
     After the handoff, do NOT call any more tools or provide any more responses.
     """,
     tools=[load_and_describe_dataset],
-    handoffs=[],  # Set after orchestrator is built
+    handoffs=[],  # Set after all agents are defined
 )
 
 
@@ -91,12 +104,22 @@ column_mapping_agent = Agent(
     - Confidence scoring for mapping decisions
     - Business context reasoning (retail, sales, inventory, promotions, geography)
     - Generate mapped CSV files per dataset
+    - Load dataset metadata if needed (use load_and_describe_dataset)
+    - Query conversation history for context (use query_conversation_history)
 
     DOMAIN EXPERTISE:
     - Retail data patterns (transactions, products, stores, promotions)
     - Temporal data (dates, timestamps, seasonal patterns)
     - Geographic hierarchies (store locations, regions)
     - Economic indicators (CPI, GDP, unemployment)
+
+    WORKFLOW:
+    1. First, check if you have source metadata from the handoff. If not, either:
+       - Call query_conversation_history(agent_filter="DataPrepAgent") to retrieve it
+       - Or call load_and_describe_dataset for each source file to reload metadata
+    2. Create your mapping plan based on the metadata
+    3. Call generate_mapped_csvs with the metadata JSON array and mapping plan
+    4. Hand off to evaluator
 
     JSON OUTPUT REQUIREMENTS (CRITICAL - READ CAREFULLY):
     - ALL JSON must be STRICTLY valid with proper escaping
@@ -126,11 +149,13 @@ column_mapping_agent = Agent(
     - Explicit reasoning for mapping choices
     - Structured JSON output with confidence scores
 
-    HANDOFF BACK:
-    - Once mapping and tool outputs are ready, do NOT post them verbatim. Call transfer_to_workflow_orchestrator and pass both the mapping plan and tool response as the handoff payload so the orchestrator can move to evaluation
+    HANDOFF PROTOCOL:
+    After completing column mapping and generating CSVs, you MUST call transfer_to_column_mapping_evaluation_agent.
+    Pass both the mapping plan and tool response as the handoff payload.
+    Do NOT call transfer_to_workflow_orchestrator - the evaluator will do that after evaluation.
     """,
-    tools=[generate_mapped_csvs],
-    handoffs=[],  # Will be set after orchestrator is defined
+    tools=[generate_mapped_csvs, load_and_describe_dataset, query_conversation_history],
+    handoffs=[],  # Set after all agents are defined
 )
 
 
@@ -148,6 +173,14 @@ data_integration_agent = Agent(
     - Perform intelligent joins on common key fields
     - Ensure all target schema columns are present (fill with None if missing)
     - Validate merged output against schema requirements
+    - Query conversation history for context (use query_conversation_history)
+    
+    WORKFLOW:
+    1. First, check if you have the mapped files manifest from the handoff. If not:
+       - Call query_conversation_history(agent_filter="ColumnMappingAgent") to retrieve it
+    2. The mapped files manifest should contain {"outputs": [{"output_path": "...", "columns": [...]}]}
+    3. Call merge_mapped_csvs_to_target with the manifest
+    4. Hand off to evaluator
     
     FILE PATH HANDLING (CRITICAL):
     - NEVER modify or translate file paths from previous tool outputs
@@ -165,11 +198,13 @@ data_integration_agent = Agent(
     - Clear reporting of merge operations
     - Structured JSON output
 
-    HANDOFF BACK:
-    - Upon finishing the merge, call transfer_to_workflow_orchestrator with the merge result JSON instead of replying directly, so the orchestrator can trigger evaluation
+    HANDOFF PROTOCOL:
+    After completing the merge operation, you MUST call transfer_to_data_integration_evaluation_agent.
+    Pass the merge result JSON as the handoff payload.
+    Do NOT call transfer_to_workflow_orchestrator - the evaluator will do that after evaluation.
     """,
-    tools=[merge_mapped_csvs_to_target],
-    handoffs=[],  # Will be set after orchestrator is defined
+    tools=[merge_mapped_csvs_to_target, query_conversation_history],
+    handoffs=[],  # Set after all agents are defined
 )
 
 
@@ -187,6 +222,7 @@ data_prep_evaluation_agent = Agent(
     - Assess tool correctness: Were data loading tools used properly?
     - Measure answer relevancy: Is the output directly relevant to the input request?
     - Generate summary reports explaining evaluation results
+    - Query conversation history to understand context
 
     EVALUATION METRICS (via DeepEval):
     1. Task Completion Metric (threshold: 0.6)
@@ -194,11 +230,11 @@ data_prep_evaluation_agent = Agent(
     3. Answer Relevancy Metric (threshold: 0.6, LLM-based)
 
     WORKFLOW:
-    1. Call evaluate_data_prep_agent with agent input, output, and expected files
-    2. Analyze returned metrics (success/failure, scores, reasons)
-    3. Call generate_summary_report to produce comprehensive analysis
-    4. Present structured evaluation summary with recommendations
-    5. Return the evaluation summary to the orchestrator and await next instructions
+    1. Optionally call query_conversation_history to review what DataPrepAgent did
+    2. Call evaluate_data_prep_agent with agent input, output, and expected files
+    3. Analyze returned metrics (success/failure, scores, reasons)
+    4. Call generate_summary_report to produce comprehensive analysis
+    5. ALWAYS call transfer_to_workflow_orchestrator with the evaluation summary
 
     CONSTRAINTS:
     - If DEEPEVAL_API_KEY is missing, report "No Deepeval API provided" for all metrics
@@ -206,8 +242,10 @@ data_prep_evaluation_agent = Agent(
     - Keep improvement suggestions specific and actionable (max 3 bullets)
     - Always include the summary report as final output
 
-    HANDOFF BACK:
-    - After presenting the evaluation summary, do NOT output it directly to the user. Call transfer_to_workflow_orchestrator and provide the summary as the tool payload so the orchestrator can route the next agent
+    HANDOFF PROTOCOL (CRITICAL):
+    After completing evaluation, you MUST call transfer_to_workflow_orchestrator.
+    Pass the evaluation summary JSON as the handoff payload.
+    The orchestrator will decide whether to retry DataPrepAgent or proceed to ColumnMappingAgent.
 
     STYLE:
     - Analytical and objective
@@ -215,7 +253,7 @@ data_prep_evaluation_agent = Agent(
     - Clear pass/fail reporting
     - Constructive recommendations
     """,
-    tools=[evaluate_data_prep_agent, generate_summary_report],
+    tools=[evaluate_data_prep_agent, generate_summary_report, query_conversation_history],
     handoffs=[],  # Set after orchestrator is built
 )
 
@@ -236,6 +274,7 @@ column_mapping_evaluation_agent = Agent(
     - Validate type compatibility: Are mapped columns type-compatible with target?
     - Assess semantic similarity: How semantically aligned are the mappings?
     - Generate summary reports explaining evaluation results
+    - Query conversation history to understand context
 
     EVALUATION METRICS (via DeepEval):
     1. Task Completion Metric (threshold: 0.6, LLM-based)
@@ -245,11 +284,11 @@ column_mapping_evaluation_agent = Agent(
     5. Semantic Similarity Metric (threshold: 0.5, token-based)
 
     WORKFLOW:
-    1. Call evaluate_column_mapping_agent with agent I/O, mapping plan, and target schema
-    2. Analyze returned metrics (success/failure, scores, detailed breakdowns)
-    3. Call generate_summary_report to produce comprehensive analysis
-    4. Present structured evaluation summary with recommendations
-    5. Return the evaluation summary to the orchestrator so it can decide the next action
+    1. Optionally call query_conversation_history to review what ColumnMappingAgent did
+    2. Call evaluate_column_mapping_agent with agent I/O, mapping plan, and target schema
+    3. Analyze returned metrics (success/failure, scores, detailed breakdowns)
+    4. Call generate_summary_report to produce comprehensive analysis
+    5. ALWAYS call transfer_to_workflow_orchestrator with the evaluation summary
 
     CONSTRAINTS:
     - If DEEPEVAL_API_KEY is missing, report "No Deepeval API provided" for all metrics
@@ -257,8 +296,10 @@ column_mapping_evaluation_agent = Agent(
     - Prioritize coverage and compatibility issues
     - Always include the summary report as final output
 
-    HANDOFF BACK:
-    - After presenting the evaluation summary, call transfer_to_workflow_orchestrator and send the full analysis as the tool payload (no inline prose) so the orchestrator can choose the next step
+    HANDOFF PROTOCOL (CRITICAL):
+    After completing evaluation, you MUST call transfer_to_workflow_orchestrator.
+    Pass the evaluation summary JSON as the handoff payload.
+    The orchestrator will decide whether to retry ColumnMappingAgent or proceed to DataIntegrationAgent.
 
     STYLE:
     - Analytical and methodical
@@ -266,7 +307,7 @@ column_mapping_evaluation_agent = Agent(
     - Clear pass/fail reporting with details
     - Constructive, prioritized recommendations
     """,
-    tools=[evaluate_column_mapping_agent, generate_summary_report],
+    tools=[evaluate_column_mapping_agent, generate_summary_report, query_conversation_history],
     handoffs=[],  # Set after orchestrator is built
 )
 
@@ -287,6 +328,7 @@ data_integration_evaluation_agent = Agent(
     - Validate final dataset: Check field coverage, types, nulls, duplicates
     - Verify schema compliance: Does output match target schema structure?
     - Generate summary reports explaining evaluation results
+    - Query conversation history to understand context
 
     EVALUATION METRICS (via DeepEval):
     1. Task Completion Metric (threshold: 0.6, LLM-based)
@@ -295,12 +337,12 @@ data_integration_evaluation_agent = Agent(
     4. Final Dataset Validation (deterministic, reads actual CSV)
 
     WORKFLOW:
-    1. Call evaluate_data_integration_agent with agent I/O and row counts
-    2. Call validate_final_dataset to check the actual CSV file
-    3. Analyze all metrics (agent performance + dataset quality)
-    4. Call generate_summary_report to produce comprehensive analysis
-    5. Present structured evaluation summary with recommendations
-    6. Send the final evaluation (and dataset validation) back to the orchestrator so it can close the workflow
+    1. Optionally call query_conversation_history to review what DataIntegrationAgent did
+    2. Call evaluate_data_integration_agent with agent I/O and row counts
+    3. Call validate_final_dataset to check the actual CSV file
+    4. Analyze all metrics (agent performance + dataset quality)
+    5. Call generate_summary_report to produce comprehensive analysis
+    6. ALWAYS call transfer_to_workflow_orchestrator with the final evaluation
 
     CONSTRAINTS:
     - If DEEPEVAL_API_KEY is missing, report "No Deepeval API provided" for DeepEval metrics
@@ -309,8 +351,10 @@ data_integration_evaluation_agent = Agent(
     - Highlight any data loss, integrity concerns, or schema violations
     - Always include the summary report as final output
 
-    HANDOFF BACK:
-    - Once validation is complete, send the evaluation/validation JSON by calling transfer_to_workflow_orchestrator (skip inline prose) so the orchestrator can record completion
+    HANDOFF PROTOCOL (CRITICAL):
+    After completing evaluation and validation, you MUST call transfer_to_workflow_orchestrator.
+    Pass the evaluation/validation JSON as the handoff payload.
+    The orchestrator will generate the final workflow report and complete the workflow.
 
     STYLE:
     - Analytical and precise
@@ -318,7 +362,7 @@ data_integration_evaluation_agent = Agent(
     - Clear pass/fail reporting with specific details
     - Constructive recommendations focused on data integrity and completeness
     """,
-    tools=[evaluate_data_integration_agent, validate_final_dataset, generate_summary_report],
+    tools=[evaluate_data_integration_agent, validate_final_dataset, generate_summary_report, query_conversation_history],
     handoffs=[],  # Set after orchestrator is built
 )
 
@@ -326,7 +370,15 @@ data_integration_evaluation_agent = Agent(
 def create_workflow_orchestrator_agent(instructions: str) -> Agent:
     """
     Instantiate the Workflow Orchestrator agent with runtime instructions and
-    configure round-trip handoffs between the orchestrator and all specialists.
+    configure chain-based handoffs:
+    
+    Chain Pattern:
+    - Orchestrator → Work Agents (DataPrep, ColumnMapping, DataIntegration)
+    - Work Agents → Their Evaluation Agents
+    - Evaluation Agents → Back to Orchestrator
+    
+    This ensures deterministic flow where each work agent automatically
+    routes to its evaluator, which then returns results to the orchestrator.
     """
     global workflow_orchestrator_agent
 
@@ -334,23 +386,24 @@ def create_workflow_orchestrator_agent(instructions: str) -> Agent:
         name="WorkflowOrchestrator",
         model=MODEL_DEFAULT,
         instructions=instructions,
-        tools=[generate_final_workflow_report],  # Final reporting tool
+        tools=[generate_final_workflow_report, query_conversation_history],
         handoffs=[
+            # Orchestrator only hands off to WORK agents, not evaluators
             data_prep_agent,
-            data_prep_evaluation_agent,
             column_mapping_agent,
-            column_mapping_evaluation_agent,
             data_integration_agent,
-            data_integration_evaluation_agent,
         ],
     )
 
-    # Ensure every specialist and evaluator returns to the orchestrator
-    data_prep_agent.handoffs = [orchestrator]
+    # Chain Pattern: Work Agent → Evaluator → Orchestrator
+    # Each work agent hands off to its evaluator (not orchestrator)
+    data_prep_agent.handoffs = [data_prep_evaluation_agent]
+    column_mapping_agent.handoffs = [column_mapping_evaluation_agent]
+    data_integration_agent.handoffs = [data_integration_evaluation_agent]
+    
+    # Each evaluator hands back to orchestrator
     data_prep_evaluation_agent.handoffs = [orchestrator]
-    column_mapping_agent.handoffs = [orchestrator]
     column_mapping_evaluation_agent.handoffs = [orchestrator]
-    data_integration_agent.handoffs = [orchestrator]
     data_integration_evaluation_agent.handoffs = [orchestrator]
 
     workflow_orchestrator_agent = orchestrator
