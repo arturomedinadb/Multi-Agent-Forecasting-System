@@ -23,7 +23,87 @@ from ..schemas.models import DemandForecastingRecord, ColumnMapping, MappingResu
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
-# === Session History Tool ===
+# === Session History Tools ===
+
+@function_tool
+def get_all_dataset_metadata() -> str:
+    """
+    Extract ALL dataset metadata from DataPrepAgent's load_and_describe_dataset calls.
+    
+    This tool specifically retrieves all dataset metadata generated during the data preparation phase.
+    It returns a JSON array of metadata objects, one for each source dataset.
+    
+    Returns:
+        JSON array of dataset metadata objects with file_path, shape, columns, dtypes, and sample.
+    """
+    # Get session info from environment
+    session_id = os.getenv("CURRENT_SESSION_ID")
+    output_dir = os.getenv("AGENT_OUTPUT_DIR", str(PROJECT_ROOT / "output"))
+    db_path = os.path.join(output_dir, "workflow_sessions.db")
+    
+    if not session_id:
+        return json.dumps({
+            "status": "error",
+            "error": "No active session",
+            "metadata": []
+        })
+    
+    if not os.path.exists(db_path):
+        return json.dumps({
+            "status": "error",
+            "error": f"Database not found at {db_path}",
+            "metadata": []
+        })
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        #Get all messages
+        cursor.execute("""
+            SELECT message_data
+            FROM agent_messages
+            WHERE session_id = ?
+            ORDER BY id
+        """, [session_id])
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Parse messages and extract load_and_describe_dataset outputs
+        metadata_list = []
+        for (msg_data,) in rows:
+            try:
+                msg = json.loads(msg_data)
+                
+                # Check if this is a function_call_output for load_and_describe_dataset
+                if msg.get('type') == 'function_call_output':
+                    output = msg.get('output', '')
+                    if output and isinstance(output, str):
+                        try:
+                            output_json = json.loads(output)
+                            # Check if it has dataset metadata structure
+                            if 'file_path' in output_json and 'columns' in output_json:
+                                metadata_list.append(output_json)
+                        except json.JSONDecodeError:
+                            continue
+            except json.JSONDecodeError:
+                continue
+        
+        return json.dumps({
+            "status": "success",
+            "session_id": session_id,
+            "dataset_count": len(metadata_list),
+            "metadata": metadata_list
+        }, indent=2)
+        
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "error": str(e),
+            "metadata": []
+        })
+
 
 @function_tool
 def query_conversation_history(
@@ -79,50 +159,81 @@ def query_conversation_history(
         
         # Check if table exists
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='messages'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_messages'"
         )
         if cursor.fetchone() is None:
             conn.close()
             return json.dumps({
                 "status": "error",
-                "error": "Messages table not found in database",
+                "error": "agent_messages table not found in database",
                 "messages": []
             })
         
-        # Build query
+        # Fetch raw messages
         query = """
-            SELECT role, name, content, type
-            FROM messages 
+            SELECT id, message_data
+            FROM agent_messages 
             WHERE session_id = ?
+            ORDER BY id DESC
         """
-        params: List[Any] = [session_id]
-        
-        if agent_filter:
-            query += " AND name = ?"
-            params.append(agent_filter)
-        
-        if not include_tool_calls:
-            query += " AND (role = 'assistant' OR role = 'user')"
-        
-        query += f" ORDER BY rowid DESC LIMIT {limit}"
-        
-        cursor.execute(query, params)
+        cursor.execute(query, [session_id])
         rows = cursor.fetchall()
         conn.close()
         
-        # Format results
+        # Parse and filter messages
         messages = []
-        for role, name, content, msg_type in rows:
-            # Truncate long content
-            content_str = str(content) if content else ""
-            preview = content_str[:300] + "..." if len(content_str) > 300 else content_str
-            
-            messages.append({
-                "role": role or "unknown",
-                "agent": name or "unknown",
-                "type": msg_type or "message",
-                "content_preview": preview,
-            })
+        for msg_id, msg_data in rows:
+            try:
+                msg = json.loads(msg_data)
+                
+                # Extract fields based on message structure
+                msg_type = msg.get("type", "message")
+                role = msg.get("role", "unknown")
+                name = msg.get("name", None)
+                
+                # Apply agent filter
+                if agent_filter and name != agent_filter:
+                    continue
+                
+                # Apply tool call filter
+                if not include_tool_calls and msg_type in ("function_call", "function_call_output"):
+                    continue
+                
+                # Extract content based on message type
+                content_str = ""
+                if "content" in msg:
+                    content = msg["content"]
+                    if isinstance(content, str):
+                        content_str = content
+                    elif isinstance(content, list):
+                        # Extract text from content blocks
+                        for block in content:
+                            if isinstance(block, dict):
+                                if block.get("type") == "text":
+                                    content_str += block.get("text", "") + " "
+                elif msg_type == "function_call":
+                    content_str = f"Called {name} with args: {msg.get('arguments', '')[:100]}"
+                elif msg_type == "function_call_output":
+                    output = msg.get("output", "")
+                    content_str = f"Output: {str(output)[:200]}"
+                
+                # Truncate long content
+                preview = content_str[:500] + "..." if len(content_str) > 500 else content_str
+                
+                messages.append({
+                    "id": msg_id,
+                    "role": role,
+                    "agent": name or "unknown",
+                    "type": msg_type,
+                    "content_preview": preview,
+                })
+                
+                # Stop if we have enough messages
+                if len(messages) >= limit:
+                    break
+                    
+            except json.JSONDecodeError:
+                continue
         
         return json.dumps({
             "status": "success",
@@ -200,6 +311,40 @@ def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict
     
     # Last resort: parse as JSON string
     return json.loads(text)
+
+
+def _coerce_metadata_entries(raw: Any) -> List[Dict[str, Any]]:
+    """
+    Normalize any metadata payload (list, dict with metadata array, JSON string, or file path)
+    into a list of dataset metadata dictionaries.
+    """
+    payload = _load_json_payload(raw)
+
+    if isinstance(payload, dict):
+        entries = payload.get("metadata")
+        if isinstance(entries, list):
+            candidates = entries
+        else:
+            candidates = [payload]
+    elif isinstance(payload, list):
+        candidates = payload
+    else:
+        return []
+
+    normalized: List[Dict[str, Any]] = []
+    for item in candidates:
+        if not isinstance(item, dict):
+            continue
+        file_path = item.get("file_path")
+        columns = item.get("columns")
+        if not file_path or not columns:
+            continue
+        normalized.append({
+            **item,
+            "file_path": file_path.replace('\\', '/')
+        })
+    return normalized
+
 
 # --- Data Preparation Tools ---
 
@@ -331,54 +476,10 @@ def run_generate_mapped_csvs(
     try:
         os.makedirs(output_dir, exist_ok=True)
         
-        # Robust parsing of source metadata - handle various input formats
-        source_meta: List[Dict[str, Any]] = []
-        
-        if isinstance(source_metadata_json, list):
-            # Already a list - process each item
-            for item in source_metadata_json:
-                if isinstance(item, dict):
-                    source_meta.append(item)
-                elif isinstance(item, str):
-                    # Item is a JSON string - parse it
-                    try:
-                        parsed = json.loads(item)
-                        if isinstance(parsed, dict):
-                            source_meta.append(parsed)
-                        elif isinstance(parsed, list):
-                            source_meta.extend([x for x in parsed if isinstance(x, dict)])
-                    except json.JSONDecodeError:
-                        print(f"DEBUG: Could not parse metadata item as JSON: {item[:100]}...")
-        elif isinstance(source_metadata_json, dict):
-            source_meta = [source_metadata_json]
-        elif isinstance(source_metadata_json, str):
-            # Fix Windows backslashes and parse JSON string
-            cleaned_source = source_metadata_json.replace('\\', '/')
-            cleaned_source = _sanitize_json_string(cleaned_source)
-            try:
-                parsed = json.loads(cleaned_source)
-                if isinstance(parsed, list):
-                    # Recursively process - items might be JSON strings too
-                    for item in parsed:
-                        if isinstance(item, dict):
-                            source_meta.append(item)
-                        elif isinstance(item, str):
-                            try:
-                                inner_parsed = json.loads(item)
-                                if isinstance(inner_parsed, dict):
-                                    source_meta.append(inner_parsed)
-                            except json.JSONDecodeError:
-                                pass
-                elif isinstance(parsed, dict):
-                    source_meta = [parsed]
-            except json.JSONDecodeError as e:
-                print(f"DEBUG: Failed to parse source_metadata_json: {e}")
-                print(f"DEBUG: Input preview: {cleaned_source[:500]}...")
-        
-        # Debug output
+        source_meta = _coerce_metadata_entries(source_metadata_json)
         print(f"DEBUG run_generate_mapped_csvs: Parsed {len(source_meta)} metadata entries")
         if source_meta:
-            print(f"DEBUG run_generate_mapped_csvs: First entry keys: {list(source_meta[0].keys()) if source_meta else 'N/A'}")
+            print(f"DEBUG run_generate_mapped_csvs: First entry keys: {list(source_meta[0].keys())}")
         
         # Parse mappings JSON
         if isinstance(mappings_json, dict):
