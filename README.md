@@ -311,40 +311,12 @@ ruff check src/
 
 ---
 
-## Roadmap
-
-- [ ] 🌐 REST API for model serving
-- [ ] 📊 Streamlit dashboard for visualization
-- [ ] 🔄 Real-time inference pipeline
-- [ ] 📦 Docker deployment
-- [ ] 🧪 Expanded test coverage
-
----
-
-## Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
 ## Authors
 
-- **Katherine Gong** — Schema Mapping System
-- **Ayda Elzohbi** — Demand Forecasting System
-- **Arturo Medina** — ML Pipeline
-- **Arial Huang** — Data Engineering
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- **Ayda Elzohbi** 
+- **Katherine Gong** 
+- **Arial Huang** 
+- **Arturo Medina**
 
 ---
 
