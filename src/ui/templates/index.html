@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Files - AI Forecasting Agent{% endblock %}
+
+{% block content %}
+<h2>Upload Your Data</h2>
+<p style="font-size: 16px; color: #333; margin-bottom: 30px;">
+    Upload one or more CSV files to begin the end-to-end forecasting workflow. 
+    Our AI agent will automatically map your data to the demand forecasting schema, 
+    engineer features, and train predictive models.
+</p>
+
+<div style="background: #f0f8f9; padding: 20px; border-radius: 8px; border-left: 4px solid #b9dde1; margin-bottom: 30px;">
+    <h4 style="margin-top: 0; color: #000;">📊 Three-Stage Pipeline</h4>
+    <ul style="margin: 10px 0 0 20px; color: #333;">
+        <li><strong>Stage 1:</strong> Schema Mapping - Intelligent data transformation</li>
+        <li><strong>Stage 2:</strong> Feature Engineering - Automated feature creation</li>
+        <li><strong>Stage 3:</strong> Model Training - Multi-model ensemble training</li>
+    </ul>
+</div>
+
+<form method="POST" action="{{ url_for('upload_files') }}" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="files">📁 Select CSV Files</label>
+        <input type="file" id="files" name="files" multiple accept=".csv" required>
+        <small>
+            Upload multiple CSV files (max 100MB per file). Supported format: CSV with headers.
+        </small>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="row_limit">📏 Sample Size</label>
+            <input type="number" id="row_limit" name="row_limit" value="10" min="1" max="1000" required>
+            <small>
+                Number of rows to sample per file (1-1000)
+            </small>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+            <label for="output_dir">📂 Output Directory</label>
+            <input type="text" id="output_dir" name="output_dir" placeholder="output_results">
+            <small>
+                Leave empty for default: <code>output/</code>
+            </small>
+        </div>
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center;">
+        <button type="submit" style="font-size: 18px; padding: 16px 48px;">
+            🚀 Start Workflow
+        </button>
+    </div>
+</form>
+
+<div style="margin-top: 40px; padding: 20px; background: #ffffff; border: 2px solid #b9dde1; border-radius: 8px;">
+    <h4 style="margin-top: 0;">💡 Tips for Best Results</h4>
+    <ul style="margin: 10px 0 0 20px; color: #333; line-height: 1.8;">
+        <li>Ensure your CSV files have clear column headers</li>
+        <li>Include date, product, and store information when available</li>
+        <li>Start with a smaller sample size (10-50 rows) for faster testing</li>
+        <li>Check the status page for real-time progress updates</li>
+    </ul>
+</div>
+
+{% if error %}
+<script>
+    // Scroll to error message
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+</script>
+{% endif %}
+{% endblock %}

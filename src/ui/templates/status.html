@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Workflow Status - {{ session_id }}{% endblock %}
+
+{% block content %}
+<h2>Workflow Status</h2>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+    <div style="background: #f0f8f9; padding: 20px; border-radius: 8px; border: 2px solid #b9dde1;">
+        <label style="margin-bottom: 10px;">Session ID</label>
+        <code style="font-size: 14px;">{{ session_id }}</code>
+    </div>
+    
+    <div style="background: #f0f8f9; padding: 20px; border-radius: 8px; border: 2px solid #b9dde1;">
+        <label style="margin-bottom: 10px;">Overall Status</label>
+        <div>
+            <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
+        </div>
+    </div>
+</div>
+
+{% if session.status == "pending" or session.status == "running" or session.status == "partial" %}
+<div class="loading">
+    <div class="spinner"></div>
+    <p style="font-size: 18px; font-weight: 500; color: #000;">Workflow is {{ session.status }}...</p>
+    <p style="color: #666; margin-top: 10px;">This page will refresh automatically every 5 seconds.</p>
+</div>
+
+<script>
+    // Auto-refresh every 5 seconds
+    setTimeout(function() {
+        window.location.reload();
+    }, 5000);
+</script>
+{% endif %}
+
+{% if session.result %}
+<h3 style="margin-top: 40px; margin-bottom: 25px;">Pipeline Stages</h3>
+
+<!-- Stage 1: Schema Mapping -->
+<div class="stage-box">
+    <h4>
+        <span class="status-badge status-{{ session.result.schema_mapping.status }}">{{ session.result.schema_mapping.status }}</span>
+        <span style="margin-left: 10px;">Stage 1: Schema Mapping</span>
+    </h4>
+    {% if session.result.schema_mapping.status == "completed" %}
+    <div style="margin-top: 15px; padding: 15px; background: #f0f8f9; border-radius: 6px;">
+        <p style="color: #000; margin-bottom: 10px;"><strong>✓ Schema mapping completed successfully</strong></p>
+        {% if session.result.schema_mapping.output_dir %}
+        <p style="margin-bottom: 5px;"><strong>Output Directory:</strong> <code>{{ session.result.schema_mapping.output_dir }}</code></p>
+        {% endif %}
+        {% if session.result.schema_mapping.result %}
+            {% if session.result.schema_mapping.result.merged_csv_path %}
+            <p style="margin-bottom: 5px;"><strong>Merged CSV:</strong> <code>{{ session.result.schema_mapping.result.merged_csv_path }}</code></p>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% elif session.result.schema_mapping.status == "error" %}
+    <div style="margin-top: 15px; padding: 15px; background: #000; color: #fff; border-radius: 6px;">
+        <p style="margin-bottom: 10px;"><strong>✗ Schema mapping failed</strong></p>
+        {% if session.result.schema_mapping.error %}
+        <p style="color: #b9dde1;">{{ session.result.schema_mapping.error }}</p>
+        {% endif %}
+        {% if session.result.schema_mapping.debug_info %}
+        <details style="margin-top: 15px; background: transparent; border: 1px solid #b9dde1;">
+            <summary style="color: #b9dde1;">Debug Information</summary>
+            <pre style="margin-top: 10px; background: #000; border: none;">{{ session.result.schema_mapping.debug_info | tojson(indent=2) }}</pre>
+        </details>
+        {% endif %}
+        {% if session.result.schema_mapping.traceback %}
+        <details style="margin-top: 15px; background: transparent; border: 1px solid #b9dde1;">
+            <summary style="color: #b9dde1;">Error Traceback</summary>
+            <pre style="margin-top: 10px; background: #000; border: none;">{{ session.result.schema_mapping.traceback }}</pre>
+        </details>
+        {% endif %}
+    </div>
+    {% elif session.result.schema_mapping.status == "running" %}
+    <div style="margin-top: 15px; padding: 15px; background: #b9dde1; border-radius: 6px;">
+        <p style="color: #000;">⏳ Schema mapping in progress...</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Stage 2: Feature Engineering -->
+{% if session.result.feature_engineering %}
+<div class="stage-box">
+    <h4>
+        <span class="status-badge status-{{ session.result.feature_engineering.status }}">{{ session.result.feature_engineering.status }}</span>
+        <span style="margin-left: 10px;">Stage 2: Feature Engineering</span>
+    </h4>
+    {% if session.result.feature_engineering.status == "completed" %}
+    <div style="margin-top: 15px; padding: 15px; background: #f0f8f9; border-radius: 6px;">
+        <p style="color: #000; margin-bottom: 10px;"><strong>✓ Feature engineering completed successfully</strong></p>
+        {% if session.result.feature_engineering.output_file %}
+        <p style="margin-bottom: 5px;"><strong>Output File:</strong> <code>{{ session.result.feature_engineering.output_file }}</code></p>
+        {% endif %}
+        {% if session.result.feature_engineering.result %}
+            {% if session.result.feature_engineering.result.features_created %}
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px;">
+                <p style="margin: 0;"><strong>Features Created:</strong> {{ session.result.feature_engineering.result.features_created }}</p>
+                <p style="margin: 0;"><strong>Input Shape:</strong> {{ session.result.feature_engineering.result.input_shape }}</p>
+                <p style="margin: 0;"><strong>Output Shape:</strong> {{ session.result.feature_engineering.result.output_shape }}</p>
+                <p style="margin: 0;"><strong>Processing Time:</strong> {{ "%.2f"|format(session.result.feature_engineering.result.processing_time) }}s</p>
+            </div>
+            {% else %}
+            <details style="margin-top: 10px;">
+                <summary>View Details</summary>
+                <pre style="margin-top: 10px;">{{ session.result.feature_engineering.result }}</pre>
+            </details>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% elif session.result.feature_engineering.status == "error" %}
+    <div style="margin-top: 15px; padding: 15px; background: #000; color: #fff; border-radius: 6px;">
+        <p style="margin-bottom: 10px;"><strong>✗ Feature engineering failed</strong></p>
+        {% if session.result.feature_engineering.error %}
+        <p style="color: #b9dde1;">{{ session.result.feature_engineering.error }}</p>
+        {% endif %}
+        {% if session.result.feature_engineering.traceback %}
+        <details style="margin-top: 15px; background: transparent; border: 1px solid #b9dde1;">
+            <summary style="color: #b9dde1;">Error Traceback</summary>
+            <pre style="margin-top: 10px; background: #000; border: none;">{{ session.result.feature_engineering.traceback }}</pre>
+        </details>
+        {% endif %}
+    </div>
+    {% elif session.result.feature_engineering.status == "running" %}
+    <div style="margin-top: 15px; padding: 15px; background: #b9dde1; border-radius: 6px;">
+        <p style="color: #000;">⏳ Feature engineering in progress...</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Stage 3: Training -->
+{% if session.result.training %}
+<div class="stage-box">
+    <h4>
+        <span class="status-badge status-{{ session.result.training.status }}">{{ session.result.training.status }}</span>
+        <span style="margin-left: 10px;">Stage 3: Model Training</span>
+    </h4>
+    {% if session.result.training.status == "completed" %}
+    <div style="margin-top: 15px; padding: 15px; background: #f0f8f9; border-radius: 6px;">
+        <p style="color: #000; margin-bottom: 15px;"><strong>✓ Model training completed successfully</strong></p>
+        {% if session.result.training.model_file %}
+        <div style="background: #b9dde1; padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+            <p style="margin-bottom: 10px;"><strong>🎯 Final Model File:</strong></p>
+            <code style="display: block; margin-bottom: 15px; background: #fff;">{{ session.result.training.model_file }}</code>
+            <a href="file://{{ session.result.training.model_file }}" target="_blank" class="download-btn">
+                📥 Download Model (PKL)
+            </a>
+        </div>
+        {% endif %}
+        {% if session.result.training.output_dir %}
+        <p style="margin-bottom: 5px;"><strong>Output Directory:</strong> <code>{{ session.result.training.output_dir }}</code></p>
+        {% endif %}
+        {% if session.result.training.total_turns %}
+        <p style="margin-bottom: 5px;"><strong>Total Training Turns:</strong> {{ session.result.training.total_turns }}</p>
+        {% endif %}
+        {% if session.result.training.result %}
+        <details style="margin-top: 15px;">
+            <summary>View Training Details</summary>
+            <pre style="margin-top: 10px;">{{ session.result.training.result }}</pre>
+        </details>
+        {% endif %}
+    </div>
+    {% elif session.result.training.status == "error" %}
+    <div style="margin-top: 15px; padding: 15px; background: #000; color: #fff; border-radius: 6px;">
+        <p style="margin-bottom: 10px;"><strong>✗ Model training failed</strong></p>
+        {% if session.result.training.error %}
+        <p style="color: #b9dde1;">{{ session.result.training.error }}</p>
+        {% endif %}
+        {% if session.result.training.traceback %}
+        <details style="margin-top: 15px; background: transparent; border: 1px solid #b9dde1;">
+            <summary style="color: #b9dde1;">Error Traceback</summary>
+            <pre style="margin-top: 10px; background: #000; border: none;">{{ session.result.training.traceback }}</pre>
+        </details>
+        {% endif %}
+    </div>
+    {% elif session.result.training.status == "running" %}
+    <div style="margin-top: 15px; padding: 15px; background: #b9dde1; border-radius: 6px;">
+        <p style="color: #000;">⏳ Model training in progress...</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endif %}
+
+{% if session.status == "completed" %}
+<div class="success" style="margin-top: 30px; padding: 25px; font-size: 18px;">
+    <h3 style="margin: 0 0 10px 0;">✓ Workflow Completed Successfully!</h3>
+    <p style="margin: 0;">All three stages have been completed. Your model is ready for deployment.</p>
+</div>
+{% endif %}
+
+<h3 style="margin-top: 40px;">Configuration Details</h3>
+<table>
+    <tr>
+        <th style="width: 200px;">Parameter</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td><strong>Source Files</strong></td>
+        <td>
+            <ul class="file-list">
+                {% for file in session.source_files %}
+                <li>{{ file }}</li>
+                {% endfor %}
+            </ul>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Row Limit</strong></td>
+        <td>{{ session.row_limit }}</td>
+    </tr>
+    <tr>
+        <td><strong>Output Directory</strong></td>
+        <td><code>{{ session.output_dir }}</code></td>
+    </tr>
+    <tr>
+        <td><strong>Created At</strong></td>
+        <td>{{ session.created_at }}</td>
+    </tr>
+    {% if session.start_time %}
+    <tr>
+        <td><strong>Start Time</strong></td>
+        <td>{{ session.start_time }}</td>
+    </tr>
+    {% endif %}
+    {% if session.end_time %}
+    <tr>
+        <td><strong>End Time</strong></td>
+        <td>{{ session.end_time }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+{% if session.status == "completed" or session.status == "error" %}
+<div style="margin-top: 40px; text-align: center;">
+    <a href="{{ url_for('index') }}">
+        <button style="font-size: 16px; padding: 14px 40px;">
+            {% if session.status == "completed" %}
+            🔄 Run Another Workflow
+            {% else %}
+            🔄 Try Again
+            {% endif %}
+        </button>
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}
