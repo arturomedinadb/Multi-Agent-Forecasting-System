@@ -309,6 +309,24 @@ ruff check src/
 
 ---
 
+## User Interface (Prototype)
+
+A Flask web UI that automates demand forecasting: upload CSVs and let AI agents take care of schema mapping, feature engineering, and model training.
+
+✨ **Features**
+- Multi-file CSV upload
+- AI-powered schema detection
+- Automated feature engineering
+- Multi-model training with tuning
+- Real-time progress dashboard
+- Session tracking + detailed outputs
+
+  
+➡️ **Check out the UI prototype and its dedicated README file for more details.**
+
+
+---
+
 ## Authors
 
 - **Ayda Elzohbi** 
