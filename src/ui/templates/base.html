@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Forecasting Agent{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #000000;
+            background: linear-gradient(135deg, #ffffff 0%, #b9dde1 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: #000000;
+            color: #b9dde1;
+            padding: 30px 0;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        
+        header h1 strong {
+            font-weight: 700;
+            color: #ffffff;
+        }
+        
+        .content {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border: 2px solid #b9dde1;
+        }
+        
+        h2 {
+            color: #000000;
+            font-size: 28px;
+            font-weight: 300;
+            margin-bottom: 10px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #b9dde1;
+        }
+        
+        h3 {
+            color: #000000;
+            font-size: 22px;
+            font-weight: 400;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        h4 {
+            color: #000000;
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            color: #333333;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #000000;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        input[type="file"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #b9dde1;
+            border-radius: 6px;
+            font-size: 15px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            transition: all 0.3s ease;
+            background: #ffffff;
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #000000;
+            box-shadow: 0 0 0 3px rgba(185, 221, 225, 0.3);
+        }
+        
+        input[type="file"] {
+            padding: 10px;
+            cursor: pointer;
+        }
+        
+        small {
+            display: block;
+            margin-top: 6px;
+            color: #666666;
+            font-size: 13px;
+        }
+        
+        button {
+            background: #000000;
+            color: #ffffff;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        
+        button:hover {
+            background: #b9dde1;
+            color: #000000;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error {
+            background: #000000;
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 5px solid #b9dde1;
+        }
+        
+        .error strong {
+            color: #b9dde1;
+        }
+        
+        .success {
+            background: #b9dde1;
+            color: #000000;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 5px solid #000000;
+        }
+        
+        .info {
+            background: #f0f8f9;
+            color: #000000;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border: 2px solid #b9dde1;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-pending {
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid #b9dde1;
+        }
+        
+        .status-running {
+            background: #b9dde1;
+            color: #000000;
+            border: 2px solid #000000;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .status-completed {
+            background: #000000;
+            color: #b9dde1;
+        }
+        
+        .status-error {
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid #b9dde1;
+        }
+        
+        .file-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .file-list li {
+            padding: 12px 15px;
+            background: #f0f8f9;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #b9dde1;
+            transition: all 0.2s ease;
+        }
+        
+        .file-list li:hover {
+            background: #b9dde1;
+            transform: translateX(5px);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 2px solid #b9dde1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #b9dde1;
+        }
+        
+        th {
+            background: #000000;
+            color: #b9dde1;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        tr:hover td {
+            background: #f0f8f9;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .spinner {
+            border: 5px solid #b9dde1;
+            border-top: 5px solid #000000;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 25px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #000000;
+            margin-top: 50px;
+            font-size: 14px;
+        }
+        
+        footer p {
+            margin: 0;
+            opacity: 0.7;
+        }
+        
+        code {
+            background: #f0f8f9;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid #b9dde1;
+            color: #000000;
+        }
+        
+        pre {
+            background: #000000;
+            color: #b9dde1;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border: 2px solid #b9dde1;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        details {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f0f8f9;
+            border-radius: 6px;
+            border: 1px solid #b9dde1;
+        }
+        
+        summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #000000;
+            padding: 5px;
+            user-select: none;
+        }
+        
+        summary:hover {
+            color: #b9dde1;
+        }
+        
+        a {
+            color: #000000;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        
+        a:hover {
+            color: #b9dde1;
+        }
+        
+        .stage-box {
+            margin: 25px 0;
+            padding: 20px;
+            border: 2px solid #b9dde1;
+            border-radius: 10px;
+            background: #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .stage-box:hover {
+            box-shadow: 0 4px 12px rgba(185, 221, 225, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .download-btn {
+            display: inline-block;
+            background: #b9dde1;
+            color: #000000;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .download-btn:hover {
+            background: #000000;
+            color: #b9dde1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>{% block header %}<strong>AI</strong> Forecasting Agent{% endblock %}</h1>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="content">
+            {% if error %}
+            <div class="error"><strong>Error:</strong> {{ error }}</div>
+            {% endif %}
+            
+            {% if success %}
+            <div class="success"><strong>Success:</strong> {{ success }}</div>
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>End-to-End AI Forecasting Agent • Schema Mapping • Feature Engineering • Model Training</p>
+        </div>
+    </footer>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
