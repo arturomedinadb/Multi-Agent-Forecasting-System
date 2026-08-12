@@ -74,5 +74,3 @@ dmypy.json
 # Tool-generated artifacts
 catboost_info/
 .deepeval/
-EOF
-
