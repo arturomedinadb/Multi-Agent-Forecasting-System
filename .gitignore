@@ -70,3 +70,9 @@ dmypy.json
 # Logs
 *.log
 *.out
+
+# Tool-generated artifacts
+catboost_info/
+.deepeval/
+EOF
+
