@@ -25,7 +25,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from schema_mapping.run_workflow import run_full_workflow
-from mapping_system.demand_forecasting import FeatureEngineeringAgent  # TODO: FeatureEngineeringAgent doesn't exist yet; see agents/feature_engineering_agent.py
+from ai_forecasting_agents.demand_forecasting.agents.feature_engineering_agent import orchestrator_agent
 from ai_forecasting_agents.demand_forecasting.agents.demand_forecasting_agent import training_agent
 from agents import Runner, trace
 from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
@@ -69,34 +69,34 @@ async def run_feature_engineering_stage(
 ) -> Dict:
     """Run feature engineering stage."""
     try:
-        agent = FeatureEngineeringAgent(openai_api_key=api_key)
-        result = await agent.engineer_features(
-            input_file=input_file,
-            output_file=output_file,
-            target_column=target_column,
+        # Create conversation ID for tracing
+        conversation_id = str(uuid.uuid4().hex[:16])
+
+        # Create a session instance with conversation ID
+        session = SQLAlchemySession.from_url(
+            conversation_id,
+            url=f"sqlite+aiosqlite:///{PROJECT_ROOT / 'training_database.db'}",
+            create_tables=True,
         )
-        # Extract result information
-        result_summary = None
-        if result:
-            if hasattr(result, 'final_output'):
-                result_summary = result.final_output
-            elif hasattr(result, 'success'):
-                # FeatureEngineeringResult object
-                result_summary = {
-                    "success": result.success,
-                    "input_shape": result.input_shape,
-                    "output_shape": result.output_shape,
-                    "features_created": result.features_created,
-                    "processing_time": result.processing_time,
-                    "feature_ratio": result.feature_ratio,
-                }
-            else:
-                result_summary = str(result)
-        
+
+        initial_prompt = f"""
+        You are tasked with feature engineering for demand forecasting.
+
+        INPUT FILE: {input_file}
+        OUTPUT FILE: {output_file}
+        TARGET COLUMN: {target_column}
+
+        Please analyze the data, generate intelligent feature recommendations, and execute the feature engineering pipeline.
+        """
+
+        # Run the workflow using routing
+        with trace("Feature Engineering", group_id=conversation_id):
+            result = await Runner.run(orchestrator_agent, input=initial_prompt, session=session)
+
         return {
             "status": "completed",
             "success": result is not None,
-            "result": result_summary,
+            "result": result.final_output if hasattr(result, 'final_output') else str(result),
             "output_file": output_file,
             "error": None,
         }
