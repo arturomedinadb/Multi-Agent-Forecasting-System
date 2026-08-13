@@ -18,15 +18,15 @@ from werkzeug.utils import secure_filename
 # Load environment variables
 load_dotenv()
 
-# Add src to path for mapping_system imports
+# Add src to path for schema_mapping / ai_forecasting_agents imports
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from mapping_system.schema_mapping.run_workflow import run_full_workflow
-from mapping_system.demand_forecasting import FeatureEngineeringAgent
-from mapping_system.demand_forecasting.agents.demand_forecasting_agent import training_agent
+from schema_mapping.run_workflow import run_full_workflow
+from mapping_system.demand_forecasting import FeatureEngineeringAgent  # TODO: FeatureEngineeringAgent doesn't exist yet; see agents/feature_engineering_agent.py
+from ai_forecasting_agents.demand_forecasting.agents.demand_forecasting_agent import training_agent
 from agents import Runner, trace
 from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 
