@@ -288,12 +288,3 @@ module = [
     "pandera.*",
 ]
 ignore_missing_imports = true
-
-[tool.poetry.dependencies]
-jinja2 = "^3.1.4"
-
-[tool.poetry]
-packages = [
-    { include = "ai_forecasting_agents", from = "src" },
-    { include = "schema_mapping", from = "src" }
-]
