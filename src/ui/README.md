@@ -295,8 +295,8 @@ model_types = ["xgboost", "lightgbm", "catboost"]  # Models to train
 ### Model Training Parameters
 
 Model hyperparameters and training settings can be adjusted in:
-- `src/mapping_system/demand_forecasting/tools/training_functions.py`
-- Agent instructions in `src/mapping_system/demand_forecasting/agents/demand_forecasting_agent.py`
+- `src/ai_forecasting_agents/demand_forecasting/tools/training_functions.py`
+- Agent instructions in `src/ai_forecasting_agents/demand_forecasting/agents/demand_forecasting_agent.py`
 
 ## 🐛 Troubleshooting
 
@@ -445,9 +445,7 @@ Test files are available in the `data/` directory:
 ### Documentation
 
 - Main README: `README.md` (project root)
-- System Documentation: `DEMAND_FORECASTING_SYSTEM.md`
 - Schema Documentation: `docs/demand_forecasting_schema.md`
-- UI Implementation Plan: `docs/ui_implementation_plan.md`
 
 ### Code Structure
 
