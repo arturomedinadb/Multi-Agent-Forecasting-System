@@ -102,24 +102,10 @@ Two intelligent agent systems that work together:
 
 ### Prerequisites
 - Python 3.10, 3.11, or 3.12
-- [Poetry](https://python-poetry.org/) or [uv](https://github.com/astral-sh/uv)
+- [uv](https://github.com/astral-sh/uv)
 - OpenAI API key
 
-### Using Poetry
-
-```bash
-# Clone the repository
-git clone https://github.com/your-org/End-To-End-AI-Forecasting-Agent.git
-cd End-To-End-AI-Forecasting-Agent
-
-# Install dependencies
-poetry install
-
-# Activate the virtual environment
-poetry shell
-```
-
-### Using uv (faster)
+### Clone and Install
 
 ```bash
 # Clone and install
@@ -150,7 +136,7 @@ Transform your retail data into the standardized demand forecasting schema:
 
 ```bash
 # Run the schema mapper
-poetry run schema-mapper
+uv run schema-mapper
 ```
 
 Or programmatically:
@@ -213,19 +199,22 @@ End-To-End-AI-Forecasting-Agent/
 │   ├── schema_mapping/           # 🗺️ Data transformation system
 │   │   ├── agents/               # Agent definitions
 │   │   ├── evaluation/           # Evaluation metrics
-│   │   ├── prompts/              # Jinja2 prompt templates
+│   │   ├── prompts/              # Renderer + registry loader code
 │   │   ├── schemas/              # Pydantic models
 │   │   ├── tools/                # Agent tool functions
 │   │   └── run_workflow.py       # Main entry point
 │   │
-│   └── ai_forecasting_agents/    # 📈 ML training system
-│       └── demand_forecasting/
-│           ├── agents/           # Training & evaluation agents
-│           ├── schemas/          # Model output schemas
-│           └── tools/            # ML functions
+│   ├── ai_forecasting_agents/    # 📈 ML training system
+│   │   └── demand_forecasting/
+│   │       ├── agents/           # Training & evaluation agents
+│   │       ├── schemas/          # Model output schemas
+│   │       └── tools/            # ML functions
+│   │
+│   └── ui/                       # 🖥️ Flask web UI for the full pipeline
+│       └── templates/            # Jinja2 HTML templates
 │
 ├── data/                         # Sample datasets
-├── templates/                    # Prompt templates
+├── prompts/                      # LLM prompt templates (Jinja2 + registry.yaml)
 ├── docs/                         # Documentation
 ├── scripts/                      # Utility scripts
 └── output/                       # Generated outputs
@@ -263,15 +252,15 @@ See [docs/demand_forecasting_schema.md](docs/demand_forecasting_schema.md) for t
 
 ### Prompt Customization
 
-Customize agent behavior via Jinja2 templates in `templates/prompt_sets/`:
+Customize agent behavior via Jinja2 templates in `prompts/`:
 
 ```
-templates/
-└── prompt_sets/
-    └── v1/
-        ├── column_mapping_user.j2
-        ├── dataprep_user.j2
-        └── integration_user.j2
+prompts/
+├── registry.yaml
+└── v1/
+    ├── column_mapping_user.j2
+    ├── dataprep_user.j2
+    └── integration_user.j2
 ```
 
 ---
@@ -291,7 +280,7 @@ templates/
 
 ```bash
 # Install dev dependencies
-poetry install --with dev
+uv sync --extra dev
 
 # Run tests
 pytest
