@@ -72,8 +72,8 @@ class PromptRenderer:
     def __init__(
         self,
         *,
-        templates_root: str | Path = "prompts",
-        registry_path: str | Path = "prompts/registry.yaml",
+        templates_root: str | Path = "prompts/schema_mapping",
+        registry_path: str | Path = "prompts/schema_mapping/registry.yaml",
     ) -> None:
         self._templates_root = Path(templates_root)
         self._env = Environment(

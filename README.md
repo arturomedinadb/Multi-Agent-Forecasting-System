@@ -207,6 +207,7 @@ End-To-End-AI-Forecasting-Agent/
 │   ├── ai_forecasting_agents/    # 📈 ML training system
 │   │   └── demand_forecasting/
 │   │       ├── agents/           # Training & evaluation agents
+│   │       ├── prompts/          # Renderer factory (reuses schema_mapping's renderer)
 │   │       ├── schemas/          # Model output schemas
 │   │       └── tools/            # ML functions
 │   │
@@ -215,6 +216,9 @@ End-To-End-AI-Forecasting-Agent/
 │
 ├── data/                         # Sample datasets
 ├── prompts/                      # LLM prompt templates (Jinja2 + registry.yaml)
+│   ├── schema_mapping/           # DataPrepAgent, ColumnMappingAgent, etc.
+│   └── demand_forecasting/       # TrainingAgent, EvaluationAgent, etc.
+├── tests/                        # pytest suite (mirrors schema_mapping / demand_forecasting)
 ├── docs/                         # Documentation
 ├── scripts/                      # Utility scripts
 └── output/                       # Generated outputs
@@ -252,16 +256,25 @@ See [docs/demand_forecasting_schema.md](docs/demand_forecasting_schema.md) for t
 
 ### Prompt Customization
 
-Customize agent behavior via Jinja2 templates in `prompts/`:
+Customize agent behavior via Jinja2 templates in `prompts/`, split per system:
 
 ```
 prompts/
-├── registry.yaml
-└── v1/
-    ├── column_mapping_user.j2
-    ├── dataprep_user.j2
-    └── integration_user.j2
+├── schema_mapping/
+│   ├── registry.yaml
+│   └── v1/
+│       ├── column_mapping_user.j2
+│       ├── dataprep_user.j2
+│       └── integration_user.j2
+└── demand_forecasting/
+    ├── registry.yaml
+    └── v1/
+        ├── training_agent.j2
+        └── evaluation_agent.j2
 ```
+
+Each agent's instructions are rendered once at import time from its template
+(via `registry.yaml`), rather than living inline in the agent definitions.
 
 ---
 

@@ -5,28 +5,28 @@ WorkflowOrchestrator:
   template: v1/orchestrator_user.j2
   required_vars: [source_files, row_limit, target_schema_json, output_dir]
 
-# Core Agents
+# Core Agents (static role instructions - no per-run variables)
 DataPrepAgent:
   template: v1/dataprep_user.j2
-  required_vars: [source_files, row_limit]
+  required_vars: []
 
 ColumnMappingAgent:
   template: v1/column_mapping_user.j2
-  required_vars: [dataset_metadata_json, target_schema_json, mapped_dir]
+  required_vars: []
 
 DataIntegrationAgent:
   template: v1/integration_user.j2
-  required_vars: [mapped_manifest_json, target_schema_json, output_path]
+  required_vars: []
 
-# Evaluation Agents for Core Agents
+# Evaluation Agents for Core Agents (static role instructions - no per-run variables)
 DataPrepEvaluationAgent:
   template: v1/data_prep_evaluation_user.j2
-  required_vars: [agent_input, agent_output, expected_files]
+  required_vars: []
 
 ColumnMappingEvaluationAgent:
   template: v1/column_mapping_evaluation_user.j2
-  required_vars: [agent_input, agent_output, mapping_plan_json, target_schema_json]
+  required_vars: []
 
 DataIntegrationEvaluationAgent:
   template: v1/data_integration_evaluation_user.j2
-  required_vars: [agent_input, agent_output, source_row_count, final_row_count, final_dataset_path, target_schema_json, mapping_plan_json]
+  required_vars: []

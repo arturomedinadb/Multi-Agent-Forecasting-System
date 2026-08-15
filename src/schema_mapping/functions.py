@@ -17,7 +17,7 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 
 from agents import function_tool
-from ..schemas.models import DemandForecastingRecord, ColumnMapping, MappingResult
+from .schemas.models import DemandForecastingRecord, ColumnMapping, MappingResult
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]

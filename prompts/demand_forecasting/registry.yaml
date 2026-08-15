@@ -1,0 +1,27 @@
+# Maps logical prompt names to template files + required variables
+# All entries here are static role instructions (no per-run variables),
+# rendered once at import time.
+
+TrainingAgent:
+  template: v1/training_agent.j2
+  required_vars: []
+
+EvaluationAgent:
+  template: v1/evaluation_agent.j2
+  required_vars: []
+
+DataAnalysisAgent:
+  template: v1/data_analysis_agent.j2
+  required_vars: []
+
+FeatureRecommendationAgent:
+  template: v1/feature_recommendation_agent.j2
+  required_vars: []
+
+FeatureEngineeringExecutionAgent:
+  template: v1/feature_engineering_execution_agent.j2
+  required_vars: []
+
+orchestrator_agent:
+  template: v1/orchestrator_agent.j2
+  required_vars: []

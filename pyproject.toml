@@ -180,7 +180,7 @@ run-pipeline = "scripts.run_complete_pipeline:main"
 packages = ["src/ai_forecasting_agents", "src/schema_mapping"]
 
 [tool.pytest.ini_options]
-testpaths = []
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
