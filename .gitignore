@@ -12,7 +12,7 @@
 *~
 
 # Output and runtime files
-output/
+output/*
 !output/.gitkeep
 *.db
 *.db-journal
