@@ -156,7 +156,7 @@ async def evaluate_model_performance(
             "message": f"Error evaluating {model_name}: {str(e)}"
         }
 
-@function_tool
+@function_tool(strict_mode=False)  # TrainingResultsOutput nests TrainedModel.hyperparameters: Dict[str, Any]
 async def evaluate_all_models(
     training_results: TrainingResultsOutput,
     iteration: int
@@ -278,14 +278,19 @@ async def evaluate_all_models(
             models_directory=""
         )
 
-@function_tool
+@function_tool(strict_mode=False)  # EvaluationResults nests ModelPerformance.hyperparameters: Dict[str, Any]
 async def check_convergence(
     evaluation_results: EvaluationResults,
-    previous_performance: Optional[Dict[str, Any]],
+    previous_performance_json: Optional[str] = None,
     max_iterations: int = 5,
     convergence_threshold: float = 0.01
 ) -> Dict[str, Any]:
-    """Check if the training has converged."""
+    """Check if the training has converged.
+
+    previous_performance_json: optional JSON object string of the previous iteration's
+    performance (e.g. '{"rmse": 12.3}'), used to measure improvement.
+    """
+    previous_performance = json.loads(previous_performance_json) if previous_performance_json else None
     try:
         iteration = evaluation_results.iteration
         print(f"\n{datetime.now()} - Checking convergence at iteration {iteration}")
@@ -353,7 +358,7 @@ async def check_convergence(
             "message": f"Error checking convergence: {str(e)}"
         }
 
-@function_tool
+@function_tool(strict_mode=False)  # EvaluationResults nests ModelPerformance.hyperparameters: Dict[str, Any]
 async def save_best_model_for_inference(
     evaluation_results: EvaluationResults,
     inference_dir: str = "output/training_results/inference"
@@ -686,7 +691,7 @@ async def analyze_data_structure_for_feedback(
     
     return analysis
 
-@function_tool
+@function_tool(strict_mode=False)  # EvaluationResults nests ModelPerformance.hyperparameters: Dict[str, Any]
 async def categorize_feedback(
     evaluation_results: EvaluationResults,
     agent_feedback: str

@@ -6,7 +6,7 @@ import json
 import os
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List, Union, Optional
 from datetime import datetime
 import joblib
 
@@ -32,31 +32,36 @@ SUPPORTED_MODELS = {
 @function_tool
 async def create_model_configs(
     model_types: List[str],
-    hyperparameters: Dict[str, Any] = None,
+    hyperparameters_json: Optional[str] = None,
     iteration: int = 1
 ) -> AllModelConfigs:
-    """Create model configurations for the specified model types."""
+    """Create model configurations for the specified model types.
+
+    hyperparameters_json: optional JSON object string mapping model_type -> hyperparameter dict,
+    e.g. '{"xgboost": {"max_depth": 6}}'. Falls back to defaults per model type when absent.
+    """
     try:
         configs = []
         session_timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        
+        all_hyperparameters = json.loads(hyperparameters_json) if hyperparameters_json else {}
+
         for model_type_str in model_types:
             if model_type_str in SUPPORTED_MODELS:
                 # Convert string to ModelType enum
                 model_type_enum = ModelType[model_type_str.upper().replace("-", "_")]
-                
+
                 model_timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                
+
                 try:
-                    hyperparameters = hyperparameters[model_type_str]
-                except:
-                    hyperparameters = get_default_hyperparameters(model_type_str)
+                    model_hyperparameters = all_hyperparameters[model_type_str]
+                except (KeyError, TypeError):
+                    model_hyperparameters = get_default_hyperparameters(model_type_str)
 
                 config = ModelConfig(
                     model_type=model_type_enum,
                     model_name=f"{model_type_str}_model_{model_timestamp}",
                     model_uuid=model_timestamp,
-                    hyperparameters=hyperparameters
+                    hyperparameters=model_hyperparameters
                 )
                 configs.append(config)
                 print(f"Created model configuration: {config.model_name}")
@@ -242,7 +247,7 @@ async def load_and_preprocess_data(
             "message": f"Error in data preprocessing: {str(e)}"
         }
 
-@function_tool
+@function_tool(strict_mode=False)  # AllModelConfigs.hyperparameters is a genuinely open dict
 async def train_models(
     all_model_configs: AllModelConfigs,
     data_dir: str,
@@ -300,7 +305,7 @@ async def train_models(
         
     except Exception as e:
         print(f"Error in model training: {str(e)}")
-    return {
+        return {
             "success": False,
             "error": str(e),
             "message": f"Error in model training: {str(e)}"
@@ -364,7 +369,7 @@ async def apply_feature_engineering(
             "message": f"Error in feature engineering: {str(e)}"
         }
 
-@function_tool
+@function_tool(strict_mode=False)  # HyperparameterTuningParameters.hyperparameters is a genuinely open dict
 async def apply_hyperparameter_tuning(
     model_type: str,
     target_model: str,
@@ -773,13 +778,18 @@ async def train_single_model(
 
 @function_tool
 async def train_ensemble_models(
-    base_models: List[Dict[str, Any]],
+    base_models_json: str,
     data_dir: str,
     output_dir: str,
     iteration: int,
     ensemble_method: str = "voting"
 ) -> Dict[str, Any]:
-    """Train ensemble models using the specified base models."""
+    """Train ensemble models using the specified base models.
+
+    base_models_json: JSON array string of base model info, each with at least
+    a "model_name" field, e.g. '[{"model_name": "xgboost_model_20240101"}]'.
+    """
+    base_models = json.loads(base_models_json)
     print(f"\n{datetime.now()} - Training ensemble models at iteration {iteration} using the specified base models: {base_models}")
     try:
         from sklearn.ensemble import VotingRegressor
