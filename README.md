@@ -263,9 +263,9 @@ prompts/
 ├── schema_mapping/
 │   ├── registry.yaml
 │   └── v1/
-│       ├── column_mapping_user.j2
-│       ├── dataprep_user.j2
-│       └── integration_user.j2
+│       ├── column_mapping_agent.j2
+│       ├── data_prep_agent.j2
+│       └── data_integration_agent.j2
 └── demand_forecasting/
     ├── registry.yaml
     └── v1/

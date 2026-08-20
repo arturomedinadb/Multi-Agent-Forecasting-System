@@ -2,31 +2,31 @@
 
 # Orchestrator Agent
 WorkflowOrchestrator:
-  template: v1/orchestrator_user.j2
+  template: v1/workflow_orchestrator.j2
   required_vars: [source_files, row_limit, target_schema_json, output_dir]
 
 # Core Agents (static role instructions - no per-run variables)
 DataPrepAgent:
-  template: v1/dataprep_user.j2
+  template: v1/data_prep_agent.j2
   required_vars: []
 
 ColumnMappingAgent:
-  template: v1/column_mapping_user.j2
+  template: v1/column_mapping_agent.j2
   required_vars: []
 
 DataIntegrationAgent:
-  template: v1/integration_user.j2
+  template: v1/data_integration_agent.j2
   required_vars: []
 
 # Evaluation Agents for Core Agents (static role instructions - no per-run variables)
 DataPrepEvaluationAgent:
-  template: v1/data_prep_evaluation_user.j2
+  template: v1/data_prep_evaluation_agent.j2
   required_vars: []
 
 ColumnMappingEvaluationAgent:
-  template: v1/column_mapping_evaluation_user.j2
+  template: v1/column_mapping_evaluation_agent.j2
   required_vars: []
 
 DataIntegrationEvaluationAgent:
-  template: v1/data_integration_evaluation_user.j2
+  template: v1/data_integration_evaluation_agent.j2
   required_vars: []
