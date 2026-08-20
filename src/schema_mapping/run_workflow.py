@@ -33,7 +33,7 @@ from .prompts.factory import get_renderer
 load_dotenv()
 
 # Get project root for locating default assets
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 async def run_full_workflow(
