@@ -91,6 +91,7 @@ class PromotionFeatureConfig(BaseModel):
     net_price_col: str = Field(default="unit_net_price", description="Net price column")
     promo_start_col: str = Field(default="promo_start_date", description="Promotion start date column")
     promo_end_col: str = Field(default="promo_end_date", description="Promotion end date column")
+    date_col: str = Field(default="transaction_date", description="Date column, used for days_since_promo")
     
     features: List[str] = Field(
         default=["discount_pct", "promo_duration", "days_since_promo", "promo_intensity"],

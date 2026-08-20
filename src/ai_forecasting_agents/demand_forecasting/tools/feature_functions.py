@@ -35,6 +35,19 @@ def handle_errors(func):
             return None
     return wrapper
 
+
+def _usable_group_by(df: pd.DataFrame, group_by: Optional[List[str]]) -> Optional[List[str]]:
+    """Drop group_by columns that are entirely null (grouping on an all-NaN
+    column drops every row from the groupby, which then breaks downstream
+    rolling/concat operations). Returns None if nothing usable remains."""
+    if not group_by:
+        return None
+    usable = [col for col in group_by if col in df.columns and df[col].notna().any()]
+    if usable != group_by:
+        dropped = [col for col in group_by if col not in usable]
+        warnings.warn(f"Dropping all-null group_by column(s) {dropped}; grouping on {usable or 'none (ungrouped)'}")
+    return usable or None
+
 @handle_errors
 def create_lag_features(df: pd.DataFrame, config: LagFeatureConfig) -> pd.DataFrame:
     """
@@ -48,18 +61,19 @@ def create_lag_features(df: pd.DataFrame, config: LagFeatureConfig) -> pd.DataFr
         DataFrame with lag features added
     """
     df_result = df.copy()
-    
-    if config.group_by:
+    group_by = _usable_group_by(df_result, config.group_by)
+
+    if group_by:
         # Group by specified columns and create lag features
         for lag in config.lags:
             lag_col = f"{config.target_column}_lag_{lag}"
-            df_result[lag_col] = df_result.groupby(config.group_by)[config.target_column].shift(lag)
+            df_result[lag_col] = df_result.groupby(group_by)[config.target_column].shift(lag)
     else:
         # Create lag features without grouping
         for lag in config.lags:
             lag_col = f"{config.target_column}_lag_{lag}"
             df_result[lag_col] = df_result[config.target_column].shift(lag)
-    
+
     return df_result
 
 @handle_errors
@@ -75,22 +89,23 @@ def create_rolling_features(df: pd.DataFrame, config: RollingFeatureConfig) -> p
         DataFrame with rolling features added
     """
     df_result = df.copy()
-    
-    if config.group_by:
+    group_by = _usable_group_by(df_result, config.group_by)
+
+    if group_by:
         # Group by specified columns and create rolling features
-        grouped = df_result.groupby(config.group_by)[config.target_column]
+        grouped = df_result.groupby(group_by)[config.target_column]
     else:
         grouped = df_result[config.target_column]
-    
+
     for window in config.windows:
         for func in config.functions:
             feature_name = f"{config.target_column}_rolling_{func}_{window}"
-            
-            if config.group_by:
-                df_result[feature_name] = grouped.rolling(window=window, min_periods=1).agg(func).reset_index(level=list(range(len(config.group_by))), drop=True)
+
+            if group_by:
+                df_result[feature_name] = grouped.rolling(window=window, min_periods=1).agg(func).reset_index(level=list(range(len(group_by))), drop=True)
             else:
                 df_result[feature_name] = grouped.rolling(window=window, min_periods=1).agg(func)
-    
+
     return df_result
 
 @handle_errors
@@ -172,9 +187,10 @@ def create_promotion_features(df: pd.DataFrame, config: PromotionFeatureConfig) 
         
         elif feature == "days_since_promo":
             # Days since last promotion ended
-            if config.promo_end_col in df_result.columns:
+            if config.promo_end_col in df_result.columns and config.date_col in df_result.columns:
                 promo_end_dates = pd.to_datetime(df_result[config.promo_end_col], errors='coerce')
-                df_result["days_since_promo"] = (df_result[config.date_col] - promo_end_dates).dt.days.fillna(999)
+                current_dates = pd.to_datetime(df_result[config.date_col], errors='coerce')
+                df_result["days_since_promo"] = (current_dates - promo_end_dates).dt.days.fillna(999)
         
         elif feature == "promo_intensity":
             # Promotion intensity based on discount percentage and duration
