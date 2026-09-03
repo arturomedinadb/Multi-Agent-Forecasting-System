@@ -25,14 +25,20 @@ from ..schemas.feature_models import (
 )
 
 def handle_errors(func):
-    """Decorator to handle errors in feature engineering functions."""
+    """Decorator to handle errors in feature engineering functions.
+
+    On failure, returns the input DataFrame unchanged (the first positional
+    arg, always `df` for every decorated function here) instead of None.
+    This means a single failing feature step just skips its own features
+    rather than poisoning every step downstream with a None that breaks
+    on the next `.copy()`/`.select_dtypes()`/etc call."""
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
             warnings.warn(f"Error in {func.__name__}: {str(e)}")
-            return None
+            return args[0] if args else None
     return wrapper
 
 
