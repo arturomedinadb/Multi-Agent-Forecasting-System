@@ -279,6 +279,58 @@ def _normalize_path(value: str | None) -> str | None:
     return value.replace('\\', '/')
 
 
+def _normalize_date_columns(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Reformat any column that looks like a date field (named 'date' or ending
+    in '_date') to a consistent ISO 'YYYY-MM-DD' string, in place.
+
+    Source files use inconsistent date formats (e.g. holidays.csv uses
+    DD/MM/YYYY while transaction data uses YYYY-MM-DD). Without normalizing,
+    a merge/join on 'date' silently matches zero rows even though both sides
+    have a column named 'date' - normalizing at mapped-CSV creation time means
+    every downstream consumer sees one consistent format regardless of how any
+    single merge step handles things.
+
+    IMPORTANT: dayfirst=True must only be applied to genuinely ambiguous
+    slash-separated dates (DD/MM/YYYY vs MM/DD/YYYY). Applying it to
+    unambiguous ISO dash-format dates (YYYY-MM-DD) actually corrupts them -
+    pandas will swap the month/day components whenever both are <=12 (e.g.
+    "2022-07-10" silently becomes "2022-10-07"). So format is detected per
+    column and dayfirst is only turned on for slash-separated values.
+    """
+    date_cols = [c for c in df.columns if c == "date" or c.endswith("_date")]
+    for col in date_cols:
+        sample = df[col].dropna().astype(str)
+        uses_slash = sample.str.contains("/").any()
+        parsed = pd.to_datetime(df[col], errors="coerce", dayfirst=uses_slash)
+        formatted = parsed.dt.strftime("%Y-%m-%d")
+        df[col] = formatted.where(parsed.notna(), df[col])
+    return df
+
+
+def _is_month_level_dates(series: "pd.Series") -> bool:
+    """True if every valid date in the series falls on day 1 - a proxy for
+    the source being naturally month-granularity data (e.g. monthly economic
+    indicators) rather than day-granularity transaction dates."""
+    parsed = pd.to_datetime(series, errors="coerce")
+    valid = parsed.dropna()
+    return len(valid) > 0 and bool((valid.dt.day == 1).all())
+
+
+def _dedupe_by_key(df: "pd.DataFrame", keys: List[str]) -> "pd.DataFrame":
+    """If a dataframe has multiple rows sharing the same key value(s) - e.g.
+    one row per region/category per date in a raw economic export that was
+    never filtered down - collapse them to one row per key by averaging
+    numeric columns. Prevents a many-to-many blowup when merging on that key."""
+    if not df.duplicated(subset=keys).any():
+        return df
+    non_key_cols = [c for c in df.columns if c not in keys]
+    numeric_cols = df[non_key_cols].select_dtypes(include="number").columns.tolist()
+    non_numeric_cols = [c for c in non_key_cols if c not in numeric_cols]
+    agg = {col: "mean" for col in numeric_cols}
+    agg.update({col: "first" for col in non_numeric_cols})
+    return df.groupby(keys, as_index=False).agg(agg)
+
+
 def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict[str, Any] | List[Dict[str, Any]]:
     """
     Load JSON from string, dict, list, or file path.
@@ -610,6 +662,8 @@ def run_generate_mapped_csvs(
             print(f"TOOL WARNING: No valid columns mapped for {path}; skipping file")
             continue
 
+        mapped_df = _normalize_date_columns(mapped_df)
+
         out_name = f"{Path(path).stem}_mapped.csv"
         out_path = Path(output_dir) / out_name
         mapped_df.to_csv(out_path, index=False)
@@ -731,6 +785,13 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
         main_df = max(dataframes, key=lambda d: d.shape[1]).copy()
         others = [d for d in dataframes if d is not main_df]
 
+        # Normalize date format/granularity across all dataframes before merging.
+        # This is defensive - generate_mapped_csvs already normalizes dates at
+        # write time, but this makes the merge correct even for mapped CSVs
+        # produced some other way.
+        main_df = _normalize_date_columns(main_df)
+        others = [_normalize_date_columns(df) for df in others]
+
         candidate_keys = ["date", "product_id", "store_id", "store_region"]
 
         # Iterative left joins on available common keys
@@ -738,11 +799,34 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
             common = [k for k in candidate_keys if k in main_df.columns and k in df.columns]
             if common:
                 try:
-                    main_df = pd.merge(main_df, df, on=common, how="left", suffixes=("", "_dup"))
+                    merge_keys = common
+                    df_to_merge = df
+
+                    if "date" in common and _is_month_level_dates(df["date"]) != _is_month_level_dates(main_df["date"]):
+                        # One side is month-granularity (e.g. monthly economic
+                        # indicators), the other day-granularity (transaction
+                        # dates) - exact date equality would never match.
+                        # Join on a derived year-month key instead, and drop
+                        # the month-level side's own 'date' column so it
+                        # doesn't overwrite the day-level date already present.
+                        main_df["_year_month"] = pd.to_datetime(main_df["date"], errors="coerce").dt.strftime("%Y-%m")
+                        df_to_merge = df.copy()
+                        df_to_merge["_year_month"] = pd.to_datetime(df_to_merge["date"], errors="coerce").dt.strftime("%Y-%m")
+                        df_to_merge = df_to_merge.drop(columns=["date"])
+                        merge_keys = ["_year_month" if k == "date" else k for k in common]
+
+                    # Collapse duplicate rows on the merge key (e.g. multiple
+                    # regions/categories sharing one date in a raw economic
+                    # export) before joining, so the merge can't multiply rows.
+                    df_to_merge = _dedupe_by_key(df_to_merge, merge_keys)
+
+                    main_df = pd.merge(main_df, df_to_merge, on=merge_keys, how="left", suffixes=("", "_dup"))
                     dup_cols = [c for c in main_df.columns if c.endswith("_dup")]
                     if dup_cols:
                         main_df.drop(columns=dup_cols, inplace=True)
-                    print(f"TOOL: Merged on keys {common}")
+                    if "_year_month" in main_df.columns:
+                        main_df.drop(columns=["_year_month"], inplace=True)
+                    print(f"TOOL: Merged on keys {merge_keys}")
                 except Exception as me:
                     print(f"TOOL WARNING: Merge failed on keys {common}: {me}")
             else:
