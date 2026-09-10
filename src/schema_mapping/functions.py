@@ -11,6 +11,7 @@ This module provides tools for:
 import json
 import os
 import sqlite3
+import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -25,14 +26,58 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 # === Session History Tools ===
 
+def _query_dataset_metadata(db_path: str, session_id: str) -> tuple[List[Dict[str, Any]], int]:
+    """Query the session DB for load_and_describe_dataset activity.
+
+    Returns (metadata_list, calls_issued) - the number of calls actually
+    issued is tracked separately from how many results have landed so far,
+    so a caller can tell the difference between "there really were only
+    N files" and "some results just haven't been persisted yet".
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT message_data
+        FROM agent_messages
+        WHERE session_id = ?
+        ORDER BY id
+    """, [session_id])
+    rows = cursor.fetchall()
+    conn.close()
+
+    metadata_list: List[Dict[str, Any]] = []
+    calls_issued = 0
+    for (msg_data,) in rows:
+        try:
+            msg = json.loads(msg_data)
+        except json.JSONDecodeError:
+            continue
+
+        if msg.get('type') == 'function_call' and msg.get('name') == 'load_and_describe_dataset':
+            calls_issued += 1
+
+        if msg.get('type') == 'function_call_output':
+            output = msg.get('output', '')
+            if output and isinstance(output, str):
+                try:
+                    output_json = json.loads(output)
+                    # Check if it has dataset metadata structure
+                    if 'file_path' in output_json and 'columns' in output_json:
+                        metadata_list.append(output_json)
+                except json.JSONDecodeError:
+                    continue
+
+    return metadata_list, calls_issued
+
+
 @function_tool
 def get_all_dataset_metadata() -> str:
     """
     Extract ALL dataset metadata from DataPrepAgent's load_and_describe_dataset calls.
-    
+
     This tool specifically retrieves all dataset metadata generated during the data preparation phase.
     It returns a JSON array of metadata objects, one for each source dataset.
-    
+
     Returns:
         JSON array of dataset metadata objects with file_path, shape, columns, dtypes, and sample.
     """
@@ -40,63 +85,44 @@ def get_all_dataset_metadata() -> str:
     session_id = os.getenv("CURRENT_SESSION_ID")
     output_dir = os.getenv("AGENT_OUTPUT_DIR", str(PROJECT_ROOT / "output"))
     db_path = os.path.join(output_dir, "workflow_sessions.db")
-    
+
     if not session_id:
         return json.dumps({
             "status": "error",
             "error": "No active session",
             "metadata": []
         })
-    
+
     if not os.path.exists(db_path):
         return json.dumps({
             "status": "error",
             "error": f"Database not found at {db_path}",
             "metadata": []
         })
-    
+
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        #Get all messages
-        cursor.execute("""
-            SELECT message_data
-            FROM agent_messages
-            WHERE session_id = ?
-            ORDER BY id
-        """, [session_id])
-        
-        rows = cursor.fetchall()
-        conn.close()
-        
-        # Parse messages and extract load_and_describe_dataset outputs
-        metadata_list = []
-        for (msg_data,) in rows:
-            try:
-                msg = json.loads(msg_data)
-                
-                # Check if this is a function_call_output for load_and_describe_dataset
-                if msg.get('type') == 'function_call_output':
-                    output = msg.get('output', '')
-                    if output and isinstance(output, str):
-                        try:
-                            output_json = json.loads(output)
-                            # Check if it has dataset metadata structure
-                            if 'file_path' in output_json and 'columns' in output_json:
-                                metadata_list.append(output_json)
-                        except json.JSONDecodeError:
-                            continue
-            except json.JSONDecodeError:
-                continue
-        
+        # The session DB is written to asynchronously relative to when a
+        # tool call finishes, so a downstream agent calling this right after
+        # a handoff can race the last load_and_describe_dataset result being
+        # persisted, and silently see fewer datasets than were actually
+        # loaded. Retry briefly whenever fewer results exist than calls were
+        # issued, instead of returning a short list as if it were complete.
+        max_attempts = 6
+        retry_delay_seconds = 0.5
+        metadata_list, calls_issued = _query_dataset_metadata(db_path, session_id)
+        attempts = 1
+        while len(metadata_list) < calls_issued and attempts < max_attempts:
+            time.sleep(retry_delay_seconds)
+            metadata_list, calls_issued = _query_dataset_metadata(db_path, session_id)
+            attempts += 1
+
         return json.dumps({
             "status": "success",
             "session_id": session_id,
             "dataset_count": len(metadata_list),
             "metadata": metadata_list
         }, indent=2)
-        
+
     except Exception as e:
         return json.dumps({
             "status": "error",
