@@ -369,16 +369,18 @@ def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict
     """
     if isinstance(raw, (dict, list)):
         return raw
-    
+
     text = raw.strip()
-    
-    # Attempt to parse inline JSON first to avoid filesystem lookups on large payloads
+
+    # Attempt to parse inline JSON first to avoid filesystem lookups on large
+    # payloads. Tolerant of extra trailing data after a complete JSON value
+    # (the LLM sometimes appends stray content past a valid closing brace)
+    # and of a raw single backslash inside a Windows path.
     if text.startswith("{") or text.startswith("["):
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            pass
-    
+        result = _extract_first_json_tolerant(text)
+        if result:
+            return result
+
     # Try as file path
     candidate_path = Path(text)
     try:
@@ -386,8 +388,11 @@ def _load_json_payload(raw: str | Dict[str, Any] | List[Dict[str, Any]]) -> Dict
             return json.loads(candidate_path.read_text())
     except OSError:
         pass
-    
-    # Last resort: parse as JSON string
+
+    # Last resort: same tolerant parse: raise if even that can't recover it
+    result = _extract_first_json_tolerant(text)
+    if result:
+        return result
     return json.loads(text)
 
 

@@ -8,7 +8,13 @@ without corrupting the second style into doubled slashes.
 """
 import json
 
-from schema_mapping.functions import _parse_json_tolerant, _extract_first_json_tolerant
+import pytest
+
+from schema_mapping.functions import (
+    _parse_json_tolerant,
+    _extract_first_json_tolerant,
+    _coerce_metadata_entries,
+)
 
 
 BS = chr(92)  # one backslash character, spelled out to keep test text unambiguous
@@ -49,3 +55,25 @@ class TestExtractFirstJsonTolerant:
         text = '{"output_path":"C:' + BS * 2 + 'Users' + BS * 2 + 'file.csv"}'
         result = _extract_first_json_tolerant(text)
         assert result["output_path"] == "C:" + BS + "Users" + BS + "file.csv"
+
+
+class TestCoerceMetadataEntriesExtraData:
+    def test_recovers_when_llm_appends_trailing_content_after_valid_json(self):
+        """generate_mapped_csvs's source_metadata_json sometimes arrives as
+        a complete, valid JSON value followed by stray extra content the
+        LLM tacked on afterward. A strict parse rejects the whole string;
+        this must still recover the metadata that was actually there."""
+        valid = json.dumps({
+            "metadata": [{"file_path": "C:/data/transactions.csv", "columns": ["date", "units_sold"]}]
+        })
+        text_with_trailing_junk = valid + " here is some additional commentary"
+
+        result = _coerce_metadata_entries(text_with_trailing_junk)
+
+        assert result == [{"file_path": "C:/data/transactions.csv", "columns": ["date", "units_sold"]}]
+
+    def test_still_raises_on_genuinely_unparseable_input(self):
+        """Must not silently swallow real garbage into an empty list -
+        that would hide a genuine failure as a quiet 0-dataset result."""
+        with pytest.raises(json.JSONDecodeError):
+            _coerce_metadata_entries("not json at all { { {")
