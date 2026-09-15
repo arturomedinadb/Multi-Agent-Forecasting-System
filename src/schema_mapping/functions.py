@@ -567,14 +567,13 @@ def run_generate_mapped_csvs(
             raw_mappings = {"mappings": mappings_json}
             print(f"DEBUG run_generate_mapped_csvs: mappings_json is a list with {len(mappings_json)} items")
         else:
-            cleaned_mappings = mappings_json.replace('\\', '/')
-            cleaned_mappings = _sanitize_json_string(cleaned_mappings)
+            cleaned_mappings = _sanitize_json_string(mappings_json)
             print(f"DEBUG run_generate_mapped_csvs: mappings_json is a string, length={len(cleaned_mappings)}")
             print(f"DEBUG run_generate_mapped_csvs: mappings preview: {cleaned_mappings[:300]}...")
-            
+
             # Try parsing with error diagnostics
             try:
-                raw_mappings = json.loads(cleaned_mappings)
+                raw_mappings = _parse_json_tolerant(cleaned_mappings)
             except json.JSONDecodeError as json_err:
                 print(f"DEBUG: JSON parse error at position {json_err.pos}: {json_err.msg}")
                 if json_err.pos and len(cleaned_mappings) > json_err.pos:
@@ -587,7 +586,7 @@ def run_generate_mapped_csvs(
                 fixed_json = re.sub(r',\s*([}\]])', r'\1', cleaned_mappings)  # Remove trailing commas
                 fixed_json = re.sub(r'([}\]])\s*([{\[])', r'\1,\2', fixed_json)  # Add missing commas between objects
                 try:
-                    raw_mappings = json.loads(fixed_json)
+                    raw_mappings = _parse_json_tolerant(fixed_json)
                     print(f"DEBUG: Successfully parsed after fixing common JSON issues")
                 except:
                     raise json_err  # Re-raise original error
@@ -745,9 +744,7 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
         
         # Use robust JSON parsing
         if isinstance(mapped_outputs_json, str):
-            # Replace backslashes with forward slashes to avoid JSON escape issues
-            cleaned_json = mapped_outputs_json.replace('\\', '/')
-            raw = _extract_first_json(cleaned_json)
+            raw = _extract_first_json_tolerant(mapped_outputs_json)
             if not raw:
                 print("TOOL ERROR: Failed to parse mapped_outputs_json")
                 return json.dumps({"status": "Failed", "error": "Invalid mapped_outputs_json"})
@@ -875,6 +872,30 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
         # Reorder columns to target schema order
         main_df = main_df[target_fields]
 
+        # Guard against silently reporting "Success" on an unusable result.
+        # If mapped_outputs_json pointed at raw/unmapped files (columns that
+        # never match any target field name), every target column above got
+        # backfilled with None and main_df is empty in substance even though
+        # it has the right headers. Fail loudly instead of writing it out.
+        if len(main_df) == 0:
+            return json.dumps({"status": "Failed", "error": "Merged output has 0 rows."})
+
+        null_frac_by_col = main_df.isnull().mean()
+        fully_null_cols = [c for c, frac in null_frac_by_col.items() if frac >= 0.999]
+        fully_null_ratio = len(fully_null_cols) / len(target_fields) if target_fields else 0
+        if fully_null_ratio >= 0.8:
+            return json.dumps({
+                "status": "Failed",
+                "error": (
+                    f"Merged output is unusable: {len(fully_null_cols)}/{len(target_fields)} "
+                    "target columns are entirely null. This usually means mapped_outputs_json "
+                    "pointed at raw source files instead of the *_mapped.csv outputs from "
+                    "generate_mapped_csvs."
+                ),
+                "fully_null_columns": fully_null_cols,
+                "rows": len(main_df),
+            })
+
         # Normalize NaNs to None and write CSV
         main_df = main_df.astype(object).where(pd.notnull(main_df), None)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -998,6 +1019,32 @@ def evaluate_data_prep_agent(
         return json.dumps({"status": "Failed", "error": str(exc)})
 
 
+def _parse_json_tolerant(text: str) -> Any:
+    """Parse a JSON string, tolerating an LLM's occasional use of a single
+    raw backslash inside a Windows path (technically invalid JSON).
+
+    Tries a normal parse first, so already-valid JSON - including a path
+    with correctly double-escaped backslashes - is never touched. Only
+    falls back to a blind backslash-to-slash replace once a direct parse
+    has already failed, since at that point the text could not have been
+    relying on a '\\\\' pair to mean a real backslash in the first place.
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return json.loads(text.replace('\\', '/'))
+
+
+def _extract_first_json_tolerant(text: str) -> Any:
+    """Same tolerant-parsing order as _parse_json_tolerant, but for callers
+    that want _extract_first_json's "pull the first JSON object out of a
+    string that may have extra data" behavior instead of a strict parse."""
+    result = _extract_first_json(text)
+    if result:
+        return result
+    return _extract_first_json(text.replace('\\', '/'))
+
+
 def _sanitize_json_string(json_str: str) -> str:
     """Remove invalid control characters from JSON string while preserving important whitespace."""
     import re
@@ -1103,22 +1150,21 @@ def evaluate_column_mapping_agent(
         })
     
     try:
-        # Fix Windows backslashes before parsing, and extract first valid JSON if there's extra data
-        cleaned_mapping = _sanitize_json_string(mapping_plan_json.replace('\\', '/'))
-        cleaned_schema = _sanitize_json_string(target_schema_json.replace('\\', '/'))
-        
-        
-        # Try direct JSON parsing first (these are already clean JSON strings from function params)
-        # Only use _extract_first_json if direct parsing fails
+        cleaned_mapping = _sanitize_json_string(mapping_plan_json)
+        cleaned_schema = _sanitize_json_string(target_schema_json)
+
+        # Try direct/tolerant JSON parsing first (these are already clean
+        # JSON strings from function params); only fall back to extracting
+        # the first valid JSON object if there's extra surrounding data.
         try:
-            mapping_plan = json.loads(cleaned_mapping)
+            mapping_plan = _parse_json_tolerant(cleaned_mapping)
         except json.JSONDecodeError:
-            mapping_plan = _extract_first_json(cleaned_mapping)
-            
+            mapping_plan = _extract_first_json_tolerant(cleaned_mapping)
+
         try:
-            target_schema = json.loads(cleaned_schema)
+            target_schema = _parse_json_tolerant(cleaned_schema)
         except json.JSONDecodeError:
-            target_schema = _extract_first_json(cleaned_schema)
+            target_schema = _extract_first_json_tolerant(cleaned_schema)
         
         # Handle mapping_plan being either a dict with "mappings" key or a direct list
         if isinstance(mapping_plan, list):
@@ -1320,14 +1366,12 @@ def validate_final_dataset(
             })
         
         df = pd.read_csv(final_dataset_path)
-        # Fix Windows backslashes before parsing, and extract first valid JSON if there's extra data
-        cleaned_schema = _sanitize_json_string(target_schema_json.replace('\\', '/'))
-        cleaned_mapping = _sanitize_json_string(mapping_plan_json.replace('\\', '/'))
-        
+        cleaned_schema = _sanitize_json_string(target_schema_json)
+        cleaned_mapping = _sanitize_json_string(mapping_plan_json)
+
         # Extract first valid JSON object (handles "Extra data" errors)
-        # _extract_first_json now returns the parsed object directly
-        target_schema = _extract_first_json(cleaned_schema)
-        mapping_plan = _extract_first_json(cleaned_mapping)
+        target_schema = _extract_first_json_tolerant(cleaned_schema)
+        mapping_plan = _extract_first_json_tolerant(cleaned_mapping)
         
         # Extract schema properties
         properties = target_schema.get("properties", {})
