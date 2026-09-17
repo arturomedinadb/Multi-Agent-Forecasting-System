@@ -122,6 +122,10 @@ Source CSV files ({len(source_files)}):
 Settings:
 - Sample rows per file: {row_limit}
 - Output directory: {resolved_output}
+- REQUIRED: the final merged CSV produced by merge_mapped_csvs_to_target MUST be
+  written to exactly this path: {resolved_output}/merged_output.csv
+  Do not invent a different filename or location - downstream stages look for
+  this exact path.
 
 Target schema (JSON):
 {target_schema_json}
@@ -139,13 +143,29 @@ call generate_final_workflow_report with all evaluation results.
     print(f"DEBUG: Initial message length: {len(initial_message)} chars")
     
     with trace("Schema Mapping Workflow", group_id=conversation_id):
-        result = await Runner.run(
-            orchestrator_agent,
-            initial_message,
-            session=session,
-            max_turns=100,  # Allow sufficient turns for multi-agent workflow
-        )
-    
+        try:
+            result = await Runner.run(
+                orchestrator_agent,
+                initial_message,
+                session=session,
+                max_turns=100,  # Allow sufficient turns for multi-agent workflow
+            )
+        except Exception as e:
+            # A model/API failure (e.g. context_length_exceeded) must not
+            # crash the whole process - report it the same structured way
+            # every other failure path in this workflow does.
+            print(f"ERROR: Runner.run() failed: {e}")
+            all_messages = await session.get_items()
+            return {
+                "status": "error",
+                "error": str(e),
+                "session_id": session_id,
+                "conversation_id": conversation_id,
+                "output_dir": resolved_output,
+                "db_path": db_path,
+                "total_turns": len(all_messages),
+            }
+
     print(f"DEBUG: Runner.run() completed with result type: {type(result).__name__}")
     
     # Retrieve conversation history for logging
