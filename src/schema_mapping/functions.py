@@ -70,6 +70,14 @@ def _query_dataset_metadata(db_path: str, session_id: str) -> tuple[List[Dict[st
     return metadata_list, calls_issued
 
 
+# Tracks session_ids that have already received a full get_all_dataset_metadata()
+# response, so a repeat call within the same session returns a short pointer
+# instead of re-dumping the entire (often large) payload back into the
+# conversation - repeated full dumps are what exhausts the model's context
+# window on longer runs.
+_metadata_already_returned: Dict[str, int] = {}
+
+
 @function_tool
 def get_all_dataset_metadata() -> str:
     """
@@ -77,6 +85,10 @@ def get_all_dataset_metadata() -> str:
 
     This tool specifically retrieves all dataset metadata generated during the data preparation phase.
     It returns a JSON array of metadata objects, one for each source dataset.
+
+    Calling this more than once per session is unnecessary - after the first
+    successful call, later calls return a short reminder instead of the full
+    payload again.
 
     Returns:
         JSON array of dataset metadata objects with file_path, shape, columns, dtypes, and sample.
@@ -100,6 +112,20 @@ def get_all_dataset_metadata() -> str:
             "metadata": []
         })
 
+    if session_id in _metadata_already_returned:
+        dataset_count = _metadata_already_returned[session_id]
+        return json.dumps({
+            "status": "success",
+            "session_id": session_id,
+            "dataset_count": dataset_count,
+            "metadata": "ALREADY_RETRIEVED",
+            "note": (
+                f"Metadata for all {dataset_count} datasets was already returned in an "
+                "earlier call this session. Do not call get_all_dataset_metadata again - "
+                "reuse that earlier result and proceed to creating mappings."
+            ),
+        })
+
     try:
         # The session DB is written to asynchronously relative to when a
         # tool call finishes, so a downstream agent calling this right after
@@ -116,12 +142,14 @@ def get_all_dataset_metadata() -> str:
             metadata_list, calls_issued = _query_dataset_metadata(db_path, session_id)
             attempts += 1
 
+        _metadata_already_returned[session_id] = len(metadata_list)
+
         return json.dumps({
             "status": "success",
             "session_id": session_id,
             "dataset_count": len(metadata_list),
             "metadata": metadata_list
-        }, indent=2)
+        })
 
     except Exception as e:
         return json.dumps({
@@ -558,8 +586,32 @@ def run_generate_mapped_csvs(
 
     try:
         os.makedirs(output_dir, exist_ok=True)
-        
-        source_meta = _coerce_metadata_entries(source_metadata_json)
+
+        try:
+            source_meta = _coerce_metadata_entries(source_metadata_json)
+        except (json.JSONDecodeError, TypeError):
+            source_meta = []
+
+        # source_metadata_json requires the model to re-echo the full, often
+        # large, metadata payload as a literal argument, which is prone to
+        # truncation or the model only including a subset of files. Compare
+        # against what's actually recorded in the session DB (the same
+        # source get_all_dataset_metadata reads from) and prefer whichever
+        # is more complete, rather than only recovering when the argument is
+        # empty outright.
+        session_id = os.getenv("CURRENT_SESSION_ID")
+        db_output_dir = os.getenv("AGENT_OUTPUT_DIR", str(PROJECT_ROOT / "output"))
+        db_path = os.path.join(db_output_dir, "workflow_sessions.db")
+        if session_id and os.path.exists(db_path):
+            db_meta, _ = _query_dataset_metadata(db_path, session_id)
+            if len(db_meta) > len(source_meta):
+                print(
+                    f"DEBUG run_generate_mapped_csvs: source_metadata_json had only "
+                    f"{len(source_meta)} entries but the session DB has {len(db_meta)} - "
+                    "using the session DB's metadata instead."
+                )
+                source_meta = db_meta
+
         print(f"DEBUG run_generate_mapped_csvs: Parsed {len(source_meta)} metadata entries")
         if source_meta:
             print(f"DEBUG run_generate_mapped_csvs: First entry keys: {list(source_meta[0].keys())}")
@@ -593,8 +645,13 @@ def run_generate_mapped_csvs(
                 try:
                     raw_mappings = _parse_json_tolerant(fixed_json)
                     print(f"DEBUG: Successfully parsed after fixing common JSON issues")
-                except:
-                    raise json_err  # Re-raise original error
+                except json.JSONDecodeError:
+                    # Last resort: salvage just the first complete JSON value,
+                    # discarding anything malformed/extra the LLM appended
+                    # after it (e.g. a stray second object tacked on the end).
+                    raw_mappings = _extract_first_json_tolerant(cleaned_mappings)
+                    if not raw_mappings:
+                        raise json_err  # genuinely unrecoverable
             
         mapping_payload = _ensure_mapping_dict(raw_mappings)
         print(f"DEBUG run_generate_mapped_csvs: mapping_payload keys: {list(mapping_payload.keys())}")
@@ -708,23 +765,52 @@ def run_generate_mapped_csvs(
     return json.dumps({"outputs": results})
 
 
+# Tracks session_ids that have already produced a successful
+# generate_mapped_csvs result, so a redundant repeat call (which may carry a
+# truncated or otherwise malformed copy of the large metadata/mappings
+# arguments) returns the known-good result instead of trying to reprocess
+# them and risking a wasted, confusing failure.
+_generate_mapped_csvs_cache: Dict[str, str] = {}
+
+
 @function_tool
 def generate_mapped_csvs(source_metadata_json: str, mappings_json: str, output_dir: str) -> str:
     """
     Apply mappings separately per source dataset and write one CSV per dataset
     containing only mapped target columns.
 
+    Calling this more than once per session is unnecessary once it has
+    succeeded - a repeat call returns the same cached result rather than
+    reprocessing its (large) arguments again.
+
     Returns JSON: {"outputs": [{"source_file": str, "output_path": str, "columns": [..]}]}
     """
+    session_id = os.getenv("CURRENT_SESSION_ID", "")
+    if session_id in _generate_mapped_csvs_cache:
+        print("TOOL: generate_mapped_csvs already succeeded this session - returning cached result.")
+        return _generate_mapped_csvs_cache[session_id]
+
     print("TOOL: Generating per-dataset mapped CSVs...")
     try:
         result = run_generate_mapped_csvs(source_metadata_json, mappings_json, output_dir)
         # DEBUG: Print what we're returning
         print(f"DEBUG generate_mapped_csvs: Returning result (first 500 chars): {result[:500]}")
+        try:
+            if json.loads(result).get("outputs"):
+                _generate_mapped_csvs_cache[session_id] = result
+        except json.JSONDecodeError:
+            pass
         return result
     except Exception as e:
         print(f"TOOL ERROR in generate_mapped_csvs: {e}")
         return json.dumps({"outputs": [], "error": str(e)})
+
+
+# Tracks session_ids for which merge_mapped_csvs_to_target has already
+# succeeded, so evaluate_data_integration_agent can refuse to run (and
+# redirect the agent back to actually merging) if it's ever asked to
+# evaluate a merge that never happened.
+_merge_mapped_csvs_cache: Dict[str, bool] = {}
 
 
 @function_tool
@@ -905,6 +991,8 @@ def merge_mapped_csvs_to_target(mapped_outputs_json: str, target_schema_json: st
         main_df = main_df.astype(object).where(pd.notnull(main_df), None)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         main_df.to_csv(output_path, index=False)
+
+        _merge_mapped_csvs_cache[os.getenv("CURRENT_SESSION_ID", "")] = True
 
         return json.dumps({
             "status": "Success",
@@ -1128,9 +1216,22 @@ def evaluate_column_mapping_agent(
     - Field Coverage: How many target fields were mapped?
     - Type Compatibility: Are mapped types compatible?
     - Semantic Similarity: How semantically similar are mappings?
-    
+
     Returns JSON with metric results.
     """
+    session_id = os.getenv("CURRENT_SESSION_ID", "")
+    if session_id not in _generate_mapped_csvs_cache:
+        return json.dumps({
+            "status": "blocked",
+            "error": (
+                "generate_mapped_csvs has not succeeded yet this session, so there is "
+                "nothing to evaluate. Column mapping is not done - call "
+                "get_all_dataset_metadata() and then generate_mapped_csvs() first, and "
+                "only request this evaluation once generate_mapped_csvs has returned "
+                "real outputs."
+            ),
+        })
+
     api_key = os.getenv("DEEPEVAL_API_KEY")
     if not api_key:
         return json.dumps({
@@ -1147,7 +1248,7 @@ def evaluate_column_mapping_agent(
     try:
         from deepeval.test_case import LLMTestCase, ToolCall
         from deepeval.metrics import TaskCompletionMetric
-        from ..evaluation.metrics import FieldCoverageMetric, TypeCompatibilityMetric, SemanticSimilarityMetric
+        from .evaluation.metrics import FieldCoverageMetric, TypeCompatibilityMetric, SemanticSimilarityMetric
     except ImportError:
         return json.dumps({
             "status": "deepeval not installed",
@@ -1272,6 +1373,18 @@ def evaluate_data_integration_agent(
     
     Returns JSON with metric results.
     """
+    session_id = os.getenv("CURRENT_SESSION_ID", "")
+    if not _merge_mapped_csvs_cache.get(session_id):
+        return json.dumps({
+            "status": "blocked",
+            "error": (
+                "merge_mapped_csvs_to_target has not succeeded yet this session, so "
+                "there is nothing to evaluate. Data integration is not done - call "
+                "merge_mapped_csvs_to_target first, and only request this evaluation "
+                "once it has returned status Success."
+            ),
+        })
+
     api_key = os.getenv("DEEPEVAL_API_KEY")
     if not api_key:
         return json.dumps({
@@ -1282,7 +1395,7 @@ def evaluate_data_integration_agent(
                 {"name": "Data Quality", "status": "skipped", "reason": "No Deepeval API provided"}
             ]
         })
-    
+
     try:
         from deepeval.test_case import LLMTestCase, ToolCall
         from deepeval.metrics import TaskCompletionMetric
@@ -1627,6 +1740,8 @@ def generate_final_workflow_report(
         if data_prep_eval.get("status") == "success":
             metrics = data_prep_eval.get("metrics", [])
             for metric in metrics:
+                if not isinstance(metric, dict):
+                    continue
                 name = metric.get("name", "Unknown")
                 score = metric.get("score", 0.0)
                 success = metric.get("success", False)
@@ -1642,6 +1757,8 @@ def generate_final_workflow_report(
         if column_mapping_eval.get("status") == "success":
             metrics = column_mapping_eval.get("metrics", [])
             for metric in metrics:
+                if not isinstance(metric, dict):
+                    continue
                 name = metric.get("name", "Unknown")
                 score = metric.get("score", 0.0)
                 success = metric.get("success", False)
@@ -1664,6 +1781,8 @@ def generate_final_workflow_report(
         if data_integration_eval.get("status") == "success":
             metrics = data_integration_eval.get("metrics", [])
             for metric in metrics:
+                if not isinstance(metric, dict):
+                    continue
                 name = metric.get("name", "Unknown")
                 score = metric.get("score", 0.0)
                 success = metric.get("success", False)
