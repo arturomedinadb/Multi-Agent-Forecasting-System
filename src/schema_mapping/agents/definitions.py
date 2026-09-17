@@ -53,7 +53,7 @@ column_mapping_agent = Agent(
     name="ColumnMappingAgent",
     model=MODEL_DEFAULT,
     instructions=_renderer.render("ColumnMappingAgent"),
-    tools=[get_all_dataset_metadata, generate_mapped_csvs, load_and_describe_dataset, query_conversation_history],
+    tools=[get_all_dataset_metadata, generate_mapped_csvs, query_conversation_history],
     handoffs=[],  # Set after all agents are defined
 )
 
