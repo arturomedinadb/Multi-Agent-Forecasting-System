@@ -6,12 +6,20 @@ This file defines both agents with their handoffs to avoid circular imports.
 from agents import Agent, AgentOutputSchema
 
 from ..tools.training_functions import (
-    create_model_configs, load_and_preprocess_data, train_models,
-    apply_feature_engineering, apply_hyperparameter_tuning, train_ensemble_models
+    create_model_configs,
+    load_and_preprocess_data,
+    train_models,
+    apply_feature_engineering,
+    apply_hyperparameter_tuning,
+    train_ensemble_models,
 )
 from ..tools.evaluation_functions import (
-    evaluate_model_performance, evaluate_all_models, check_convergence, 
-    save_best_model_for_inference, analyze_data_structure_for_feedback, categorize_feedback
+    evaluate_model_performance,
+    evaluate_all_models,
+    check_convergence,
+    save_best_model_for_inference,
+    analyze_data_structure_for_feedback,
+    categorize_feedback,
 )
 from ..schemas.forecasting_models import TrainingResultsOutput
 from ..prompts.factory import get_renderer
@@ -32,10 +40,10 @@ training_agent = Agent(
         train_models,
         apply_feature_engineering,
         apply_hyperparameter_tuning,
-        train_ensemble_models
+        train_ensemble_models,
     ],
     output_type=AgentOutputSchema(TrainingResultsOutput, strict_json_schema=False),
-    handoffs=[]  # Will be set after evaluation_agent is defined
+    handoffs=[],  # Will be set after evaluation_agent is defined
 )
 
 # === Evaluation Agent ===
@@ -49,9 +57,9 @@ evaluation_agent = Agent(
         check_convergence,
         save_best_model_for_inference,
         analyze_data_structure_for_feedback,
-        categorize_feedback
+        categorize_feedback,
     ],
-    handoffs=[]  # Will be set after training_agent is defined
+    handoffs=[],  # Will be set after training_agent is defined
 )
 
 # Set up handoffs after both agents are defined

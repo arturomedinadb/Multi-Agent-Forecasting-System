@@ -3,6 +3,7 @@
 Reuses the generic PromptRenderer from schema_mapping.prompts, pointed at
 demand_forecasting's own templates_root/registry_path.
 """
+
 from pathlib import Path
 from schema_mapping.prompts.renderer import PromptRenderer
 

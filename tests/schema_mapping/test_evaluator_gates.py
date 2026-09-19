@@ -5,12 +5,15 @@ evaluate_data_integration_agent must refuse to run if
 merge_mapped_csvs_to_target hasn't. Both guard against an agent skipping its
 required tool calls and jumping straight to self-evaluation.
 """
+
 import asyncio
 import json
 
 import schema_mapping.functions as functions_module
-from schema_mapping.functions import evaluate_column_mapping_agent, evaluate_data_integration_agent
-
+from schema_mapping.functions import (
+    evaluate_column_mapping_agent,
+    evaluate_data_integration_agent,
+)
 
 SESSION_ID = "evaluator-gate-test-session"
 
@@ -43,7 +46,9 @@ class TestColumnMappingEvaluatorGate:
     def test_proceeds_when_generate_mapped_csvs_already_succeeded(self, monkeypatch):
         monkeypatch.setenv("CURRENT_SESSION_ID", SESSION_ID)
         monkeypatch.delenv("DEEPEVAL_API_KEY", raising=False)
-        functions_module._generate_mapped_csvs_cache[SESSION_ID] = json.dumps({"outputs": [{"output_path": "x"}]})
+        functions_module._generate_mapped_csvs_cache[SESSION_ID] = json.dumps(
+            {"outputs": [{"output_path": "x"}]}
+        )
 
         result = _invoke(
             evaluate_column_mapping_agent,

@@ -12,6 +12,7 @@ Usage:
 Or directly:
     python -m mapping_system.schema_mapping.run_workflow
 """
+
 import asyncio
 import json
 import os
@@ -43,37 +44,37 @@ async def run_full_workflow(
 ) -> dict:
     """
     Execute the schema mapping workflow using orchestrator agent with session memory and tracing.
-    
+
     This workflow uses a chain-based handoff pattern:
     - Orchestrator → Work Agents (DataPrep, ColumnMapping, DataIntegration)
     - Work Agents → Their Evaluation Agents
     - Evaluation Agents → Back to Orchestrator
-    
+
     Args:
         source_files: List of CSV file paths to process
         row_limit: Number of rows to sample per dataset (default: 10)
         output_dir: Output directory for results (default: PROJECT_ROOT/output)
-    
+
     Returns:
         Dictionary with workflow results including session_id, conversation_id, and outputs
     """
     resolved_output = output_dir or str(PROJECT_ROOT / "output")
-    
+
     # Create output directory for session database
     os.makedirs(resolved_output, exist_ok=True)
-    
+
     # Generate unique IDs for this workflow run
     # - conversation_id: UUID for trace grouping (links all traces in this run)
     # - session_id: Timestamp-based ID for session database
     conversation_id = str(uuid.uuid4().hex[:16])
     session_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    
+
     # Store IDs in environment for tools to access
     os.environ["CONVERSATION_ID"] = conversation_id
     os.environ["CURRENT_SESSION_ID"] = session_id
     os.environ["AGENT_ROW_LIMIT"] = str(row_limit)
     os.environ["AGENT_OUTPUT_DIR"] = resolved_output
-    
+
     # Create SQLAlchemy session for conversation memory
     # This allows agents to share context and query history
     db_path = f"{resolved_output}/workflow_sessions.db"
@@ -141,7 +142,7 @@ call generate_final_workflow_report with all evaluation results.
     print(f"DEBUG: Starting traced workflow run")
     print(f"DEBUG: Trace ID: {conversation_id}")
     print(f"DEBUG: Initial message length: {len(initial_message)} chars")
-    
+
     with trace("Schema Mapping Workflow", group_id=conversation_id):
         try:
             result = await Runner.run(
@@ -167,20 +168,20 @@ call generate_final_workflow_report with all evaluation results.
             }
 
     print(f"DEBUG: Runner.run() completed with result type: {type(result).__name__}")
-    
+
     # Retrieve conversation history for logging
     all_messages = await session.get_items()
     print(f"\n\nWorkflow completed with {len(all_messages)} conversation turns")
-    
+
     # Show detailed message flow for debugging
     print("\nDEBUG: Last 15 Message Flow:")
-    for i, msg in enumerate(all_messages[-15:], start=max(1, len(all_messages)-14)):
+    for i, msg in enumerate(all_messages[-15:], start=max(1, len(all_messages) - 14)):
         msg_type = msg.get("type", "unknown")
         role = msg.get("role", "unknown")
         name = msg.get("name", "unknown")
-        
+
         if msg_type == "tool_result":
-            output_preview = str(msg.get('output', ''))[:50]
+            output_preview = str(msg.get("output", ""))[:50]
             print(f"  {i}. [TOOL RESULT] -> {output_preview}...")
         elif "tool_calls" in msg:
             tool_calls = msg.get("tool_calls", [])
@@ -197,13 +198,13 @@ call generate_final_workflow_report with all evaluation results.
         else:
             content = str(msg.get("content", ""))[:80]
             print(f"  {i}. [{role}] {name} - {content}...")
-    
+
     # Show agent interaction summary
     agent_counts = {}
     for msg in all_messages:
         agent_name = msg.get("name", "unknown")
         agent_counts[agent_name] = agent_counts.get(agent_name, 0) + 1
-    
+
     print("\nAgent Interaction Summary:")
     for agent_name, count in sorted(agent_counts.items()):
         print(f"  {agent_name}: {count} messages")
@@ -216,7 +217,9 @@ call generate_final_workflow_report with all evaluation results.
         "db_path": db_path,
         "total_turns": len(all_messages),
         "agent_interactions": agent_counts,
-        "final_output": result.final_output if hasattr(result, 'final_output') else str(result),
+        "final_output": (
+            result.final_output if hasattr(result, "final_output") else str(result)
+        ),
     }
 
 
@@ -239,7 +242,7 @@ def main() -> None:
     for file_path in default_files:
         if file_path.exists():
             # Convert to forward slashes to avoid LLM path confusion
-            source_files.append(str(file_path).replace('\\', '/'))
+            source_files.append(str(file_path).replace("\\", "/"))
         else:
             print(f"⚠️  Warning: File not found: {file_path}")
 
@@ -261,6 +264,7 @@ def main() -> None:
     except Exception as exc:
         print(f"\n[ERROR] Workflow failed: {exc}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
@@ -271,11 +275,11 @@ def main() -> None:
     print(f"Trace ID: {result.get('conversation_id')}")
     print(f"Session DB: {result.get('db_path')}")
     print(f"Total conversation turns: {result.get('total_turns')}")
-    
+
     print("\nAgent Interactions:")
-    for agent, count in sorted(result.get('agent_interactions', {}).items()):
+    for agent, count in sorted(result.get("agent_interactions", {}).items()):
         print(f"  {agent}: {count} messages")
-    
+
     print(f"\nOutput directory: {result.get('output_dir')}")
     print(f"\nFinal output:\n{result.get('final_output')}")
     print("\n" + "=" * 70 + "\n")

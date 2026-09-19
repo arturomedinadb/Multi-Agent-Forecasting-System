@@ -6,6 +6,7 @@ Usage:
     uv run python scripts/run_full_pipeline.py
     uv run python scripts/run_full_pipeline.py --row-limit 1000 --output-dir output/full_run
 """
+
 import argparse
 import asyncio
 import os
@@ -26,9 +27,12 @@ from agents import Runner, trace
 from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 
 from schema_mapping.run_workflow import run_full_workflow
-from ai_forecasting_agents.demand_forecasting.agents.feature_engineering_agent import orchestrator_agent
-from ai_forecasting_agents.demand_forecasting.agents.demand_forecasting_agent import training_agent
-
+from ai_forecasting_agents.demand_forecasting.agents.feature_engineering_agent import (
+    orchestrator_agent,
+)
+from ai_forecasting_agents.demand_forecasting.agents.demand_forecasting_agent import (
+    training_agent,
+)
 
 MERGED_OUTPUT_FILE = "merged_output.csv"
 FEATURE_ENGINEERED_FILE = "engineered_features.csv"
@@ -52,7 +56,9 @@ def find_merged_csv(output_dir: Path) -> Optional[Path]:
     return file_path if file_path.exists() else None
 
 
-async def run_feature_engineering_stage(input_file: str, output_file: str, target_column: str) -> dict:
+async def run_feature_engineering_stage(
+    input_file: str, output_file: str, target_column: str
+) -> dict:
     conversation_id = str(uuid.uuid4().hex[:16])
     session = SQLAlchemySession.from_url(
         conversation_id,
@@ -71,12 +77,16 @@ async def run_feature_engineering_stage(input_file: str, output_file: str, targe
     """
 
     with trace("Feature Engineering", group_id=conversation_id):
-        result = await Runner.run(orchestrator_agent, input=initial_prompt, session=session)
+        result = await Runner.run(
+            orchestrator_agent, input=initial_prompt, session=session
+        )
 
     return {
         "status": "completed",
         "success": result is not None,
-        "result": result.final_output if hasattr(result, "final_output") else str(result),
+        "result": (
+            result.final_output if hasattr(result, "final_output") else str(result)
+        ),
         "output_file": output_file,
     }
 
@@ -109,7 +119,9 @@ async def run_training_stage(
     """
 
     with trace("Demand Forecasting Training", group_id=conversation_id):
-        result = await Runner.run(training_agent, input=initial_message, max_turns=100, session=session)
+        result = await Runner.run(
+            training_agent, input=initial_message, max_turns=100, session=session
+        )
 
     items = await session.get_items()
     model_files = list(Path(inference_dir).glob("**/*.pkl"))
@@ -118,7 +130,9 @@ async def run_training_stage(
     return {
         "status": "completed",
         "success": result is not None,
-        "result": result.final_output if hasattr(result, "final_output") else str(result),
+        "result": (
+            result.final_output if hasattr(result, "final_output") else str(result)
+        ),
         "conversation_id": conversation_id,
         "total_turns": len(items),
         "model_file": str(best_model_file) if best_model_file else None,
@@ -165,9 +179,9 @@ async def run_full_pipeline(
     if not merged_csv:
         pipeline_result["schema_mapping"]["status"] = "error"
         pipeline_result["schema_mapping"]["success"] = False
-        pipeline_result["schema_mapping"]["error"] = (
-            f"Could not find {MERGED_OUTPUT_FILE} in {resolved_output}"
-        )
+        pipeline_result["schema_mapping"][
+            "error"
+        ] = f"Could not find {MERGED_OUTPUT_FILE} in {resolved_output}"
         return pipeline_result
 
     # --- Stage 2: Feature Engineering ---
@@ -207,19 +221,38 @@ async def run_full_pipeline(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run the full schema-mapping -> feature-engineering -> training pipeline.")
-    parser.add_argument("--source-files", nargs="+", default=DEFAULT_SOURCE_FILES, help="CSV files to map (default: the sample data/ set)")
-    parser.add_argument("--row-limit", type=int, default=500, help="Rows to sample per source file")
-    parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "output" / "full_pipeline_run"), help="Where to write all pipeline outputs")
+    parser = argparse.ArgumentParser(
+        description="Run the full schema-mapping -> feature-engineering -> training pipeline."
+    )
+    parser.add_argument(
+        "--source-files",
+        nargs="+",
+        default=DEFAULT_SOURCE_FILES,
+        help="CSV files to map (default: the sample data/ set)",
+    )
+    parser.add_argument(
+        "--row-limit", type=int, default=500, help="Rows to sample per source file"
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(PROJECT_ROOT / "output" / "full_pipeline_run"),
+        help="Where to write all pipeline outputs",
+    )
     parser.add_argument("--target-column", default="units_sold")
-    parser.add_argument("--id-columns", nargs="+", default=["date", "product_id", "store_id"])
-    parser.add_argument("--model-types", nargs="+", default=["xgboost", "lightgbm", "catboost"])
+    parser.add_argument(
+        "--id-columns", nargs="+", default=["date", "product_id", "store_id"]
+    )
+    parser.add_argument(
+        "--model-types", nargs="+", default=["xgboost", "lightgbm", "catboost"]
+    )
     return parser.parse_args()
 
 
 async def main():
     if not os.getenv("OPENAI_API_KEY"):
-        print("Warning: OPENAI_API_KEY not set - the agents will not be able to call the OpenAI API.")
+        print(
+            "Warning: OPENAI_API_KEY not set - the agents will not be able to call the OpenAI API."
+        )
 
     args = parse_args()
     result = await run_full_pipeline(
@@ -236,11 +269,16 @@ async def main():
     print("=" * 70)
     for stage in ("schema_mapping", "feature_engineering", "training"):
         stage_result = result.get(stage, {})
-        print(f"  {stage}: {stage_result.get('status')} (success={stage_result.get('success')})")
+        print(
+            f"  {stage}: {stage_result.get('status')} (success={stage_result.get('success')})"
+        )
         if stage_result.get("error"):
             print(f"    error: {stage_result['error']}")
 
-    all_success = all(result.get(s, {}).get("success") for s in ("schema_mapping", "feature_engineering", "training"))
+    all_success = all(
+        result.get(s, {}).get("success")
+        for s in ("schema_mapping", "feature_engineering", "training")
+    )
     return 0 if all_success else 1
 
 

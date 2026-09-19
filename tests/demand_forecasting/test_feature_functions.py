@@ -3,6 +3,7 @@ Tests for feature_functions.py helpers: dropping unusable group_by columns,
 the handle_errors decorator's failure behavior, and PromotionFeatureConfig's
 date-based features.
 """
+
 import warnings
 
 import pandas as pd
@@ -50,6 +51,7 @@ class TestHandleErrorsDecorator:
     def test_returns_input_df_unchanged_on_failure(self):
         """A failing feature function returns its own input df unchanged,
         so a step that fails doesn't break the ones after it in a chain."""
+
         @handle_errors
         def always_fails(df, config):
             raise ValueError("simulated failure")
@@ -77,12 +79,16 @@ class TestHandleErrorsDecorator:
 
 class TestGroupedFeaturesWithAllNullGroupBy:
     def test_create_lag_features_does_not_crash(self):
-        df = pd.DataFrame({
-            "product_id": ["P1", "P1", "P2"],
-            "store_id": [None, None, None],
-            "units_sold": [10, 20, 30],
-        })
-        config = LagFeatureConfig(target_column="units_sold", lags=[1], group_by=["product_id", "store_id"])
+        df = pd.DataFrame(
+            {
+                "product_id": ["P1", "P1", "P2"],
+                "store_id": [None, None, None],
+                "units_sold": [10, 20, 30],
+            }
+        )
+        config = LagFeatureConfig(
+            target_column="units_sold", lags=[1], group_by=["product_id", "store_id"]
+        )
         with pytest.warns(UserWarning, match="all-null"):
             result = create_lag_features(df, config)
         assert result is not None
@@ -91,13 +97,18 @@ class TestGroupedFeaturesWithAllNullGroupBy:
     def test_create_rolling_features_does_not_crash(self):
         """Grouping by a column that's entirely null must not crash the
         rolling-window computation."""
-        df = pd.DataFrame({
-            "product_id": ["P1", "P1", "P2"],
-            "store_id": [None, None, None],
-            "units_sold": [10, 20, 30],
-        })
+        df = pd.DataFrame(
+            {
+                "product_id": ["P1", "P1", "P2"],
+                "store_id": [None, None, None],
+                "units_sold": [10, 20, 30],
+            }
+        )
         config = RollingFeatureConfig(
-            target_column="units_sold", windows=[7], functions=["mean"], group_by=["product_id", "store_id"]
+            target_column="units_sold",
+            windows=[7],
+            functions=["mean"],
+            group_by=["product_id", "store_id"],
         )
         with pytest.warns(UserWarning, match="all-null"):
             result = create_rolling_features(df, config)
@@ -111,10 +122,12 @@ class TestPromotionFeatureConfig:
         assert hasattr(config, "date_col")
 
     def test_days_since_promo_does_not_crash(self):
-        df = pd.DataFrame({
-            "date": ["2022-07-10"],
-            "promotion_end_date": ["2022-07-01"],
-        })
+        df = pd.DataFrame(
+            {
+                "date": ["2022-07-10"],
+                "promotion_end_date": ["2022-07-01"],
+            }
+        )
         config = PromotionFeatureConfig(
             promo_end_col="promotion_end_date",
             date_col="date",

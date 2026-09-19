@@ -4,6 +4,7 @@ a complete, valid mapping document followed by extra content the LLM
 appended afterward (e.g. a stray second object tacked onto the end), rather
 than failing the whole tool call.
 """
+
 import json
 
 import pandas as pd
@@ -16,25 +17,40 @@ class TestGenerateMappedCsvsRecoversFromExtraData:
         src_path = tmp_path / "x.csv"
         pd.DataFrame({"a": [1, 2]}).to_csv(src_path, index=False)
 
-        source_metadata = json.dumps({
-            "metadata": [{"file_path": str(src_path).replace("\\", "/"), "columns": ["a"]}]
-        })
+        source_metadata = json.dumps(
+            {
+                "metadata": [
+                    {"file_path": str(src_path).replace("\\", "/"), "columns": ["a"]}
+                ]
+            }
+        )
 
-        valid_mapping_doc = json.dumps({
-            "mappings": [
-                {
-                    "source_file": "x.csv",
-                    "mappings": [
-                        {"source_column": "a", "target_column": "date", "confidence": 0.9, "reasoning": "r"}
-                    ],
-                }
-            ]
-        })
-        # Simulate the LLM appending a stray extra object after a complete,
-        # otherwise-valid document - the real failure seen in a live run.
-        malformed_mappings = valid_mapping_doc + ',{"stray": "extra object appended by mistake"}'
+        valid_mapping_doc = json.dumps(
+            {
+                "mappings": [
+                    {
+                        "source_file": "x.csv",
+                        "mappings": [
+                            {
+                                "source_column": "a",
+                                "target_column": "date",
+                                "confidence": 0.9,
+                                "reasoning": "r",
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+        # A stray extra object appended after a complete, otherwise-valid
+        # document.
+        malformed_mappings = (
+            valid_mapping_doc + ',{"stray": "extra object appended by mistake"}'
+        )
 
-        result = json.loads(run_generate_mapped_csvs(source_metadata, malformed_mappings, str(tmp_path)))
+        result = json.loads(
+            run_generate_mapped_csvs(source_metadata, malformed_mappings, str(tmp_path))
+        )
 
         assert result.get("error") is None
         assert len(result["outputs"]) == 1

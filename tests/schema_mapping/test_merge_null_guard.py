@@ -4,6 +4,7 @@ loudly instead of reporting "Success" when the merge produces a dataframe
 with the correct target schema column names but no real data in them (e.g.
 because it was handed raw/unmapped source files).
 """
+
 import asyncio
 import json
 
@@ -11,7 +12,6 @@ import pandas as pd
 import pytest
 
 from schema_mapping.functions import merge_mapped_csvs_to_target
-
 
 TARGET_SCHEMA = {
     "properties": {
@@ -39,17 +39,21 @@ class TestMergeNullGuard:
         """Feeding raw source files (columns that never match any target
         field name) must not silently succeed with an all-null output."""
         raw_path = tmp_path / "transaction_like_synth.csv"
-        pd.DataFrame({
-            "transaction_date": ["2022-01-01", "2022-01-02"],
-            "prod_code": ["P1", "P2"],
-        }).to_csv(raw_path, index=False)
+        pd.DataFrame(
+            {
+                "transaction_date": ["2022-01-01", "2022-01-02"],
+                "prod_code": ["P1", "P2"],
+            }
+        ).to_csv(raw_path, index=False)
 
         output_path = tmp_path / "merged_output.csv"
         result = _invoke(
             # forward slashes: the tool's JSON pre-cleaning turns backslashes
             # into slashes, which would double up an already-forward-slash
             # path's separators if we passed a native Windows (backslash) path
-            mapped_outputs_json=json.dumps({"outputs": [{"output_path": str(raw_path).replace("\\", "/")}]}),
+            mapped_outputs_json=json.dumps(
+                {"outputs": [{"output_path": str(raw_path).replace("\\", "/")}]}
+            ),
             target_schema_json=json.dumps(TARGET_SCHEMA),
             output_path=str(output_path),
         )
@@ -62,16 +66,20 @@ class TestMergeNullGuard:
         """A mapped CSV that already uses target column names merges and
         writes normally."""
         mapped_path = tmp_path / "transaction_mapped.csv"
-        pd.DataFrame({
-            "date": ["2022-01-01", "2022-01-02"],
-            "product_id": ["P1", "P2"],
-            "store_id": ["S1", "S1"],
-            "units_sold": [10, 20],
-        }).to_csv(mapped_path, index=False)
+        pd.DataFrame(
+            {
+                "date": ["2022-01-01", "2022-01-02"],
+                "product_id": ["P1", "P2"],
+                "store_id": ["S1", "S1"],
+                "units_sold": [10, 20],
+            }
+        ).to_csv(mapped_path, index=False)
 
         output_path = tmp_path / "merged_output.csv"
         result = _invoke(
-            mapped_outputs_json=json.dumps({"outputs": [{"output_path": str(mapped_path).replace("\\", "/")}]}),
+            mapped_outputs_json=json.dumps(
+                {"outputs": [{"output_path": str(mapped_path).replace("\\", "/")}]}
+            ),
             target_schema_json=json.dumps(TARGET_SCHEMA),
             output_path=str(output_path),
         )
@@ -86,7 +94,9 @@ class TestMergeNullGuard:
 
         output_path = tmp_path / "merged_output.csv"
         result = _invoke(
-            mapped_outputs_json=json.dumps({"outputs": [{"output_path": str(mapped_path).replace("\\", "/")}]}),
+            mapped_outputs_json=json.dumps(
+                {"outputs": [{"output_path": str(mapped_path).replace("\\", "/")}]}
+            ),
             target_schema_json=json.dumps(TARGET_SCHEMA),
             output_path=str(output_path),
         )

@@ -1,4 +1,5 @@
 """Factory for creating configured PromptRenderer instances."""
+
 from pathlib import Path
 from .renderer import PromptRenderer
 
@@ -11,4 +12,3 @@ def get_renderer() -> PromptRenderer:
         templates_root=PROJECT_ROOT / "prompts" / "schema_mapping",
         registry_path=PROJECT_ROOT / "prompts" / "schema_mapping" / "registry.yaml",
     )
-

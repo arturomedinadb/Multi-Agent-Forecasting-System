@@ -11,17 +11,14 @@ from .feature_models import (
     PromotionFeatureConfig,
     HolidayFeatureConfig,
     WeatherFeatureConfig,
-    EconomicFeatureConfig
+    EconomicFeatureConfig,
 )
 
-from .forecasting_models import (
-    TrainedModel,
-    TrainingResultsOutput
-)
+from .forecasting_models import TrainedModel, TrainingResultsOutput
 
 __all__ = [
     "FeatureEngineeringConfig",
-    "FeatureSet", 
+    "FeatureSet",
     "LagFeatureConfig",
     "RollingFeatureConfig",
     "TimeFeatureConfig",
@@ -30,5 +27,5 @@ __all__ = [
     "WeatherFeatureConfig",
     "EconomicFeatureConfig",
     "TrainedModel",
-    "TrainingResultsOutput"
+    "TrainingResultsOutput",
 ]

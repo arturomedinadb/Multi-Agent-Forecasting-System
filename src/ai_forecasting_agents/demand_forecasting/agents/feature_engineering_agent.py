@@ -24,12 +24,13 @@ from ..schemas.feature_models import (
     HolidayFeatureConfig,
     WeatherFeatureConfig,
     EconomicFeatureConfig,
-    FeatureEngineeringResult
+    FeatureEngineeringResult,
 )
+
 # Import functions locally to avoid @function_tool decorator issues at module level
 from ..tools.feature_functions import (
     process_feature_engineering_pipeline,
-    analyze_data_structure
+    analyze_data_structure,
 )
 from ..prompts.factory import get_renderer
 
@@ -43,7 +44,7 @@ feature_engineering_execution_agent = Agent(
     model="gpt-4o-mini",
     instructions=_renderer.render("FeatureEngineeringExecutionAgent"),
     tools=[process_feature_engineering_pipeline],
-    handoff_description = "Executes the complete feature engineering pipeline and produces engineered datasets"
+    handoff_description="Executes the complete feature engineering pipeline and produces engineered datasets",
 )
 
 # Agent 2: Feature Recommendation Agent
@@ -52,7 +53,7 @@ feature_recommendation_agent = Agent(
     model="gpt-4o-mini",
     instructions=_renderer.render("FeatureRecommendationAgent"),
     output_type=AgentOutputSchema(FeatureEngineeringConfig, strict_json_schema=True),
-    handoff_description = "Generates AI-powered feature engineering recommendations based on data analysis"
+    handoff_description="Generates AI-powered feature engineering recommendations based on data analysis",
 )
 
 # Agent 1: Data Analysis Agent
@@ -62,7 +63,7 @@ data_analysis_agent = Agent(
     instructions=_renderer.render("DataAnalysisAgent"),
     tools=[analyze_data_structure],
     output_type=AgentOutputSchema(DataAnalysisResult, strict_json_schema=False),
-    handoff_description="Analyzes input datasets and provides comprehensive data structure analysis for feature engineering"
+    handoff_description="Analyzes input datasets and provides comprehensive data structure analysis for feature engineering",
 )
 
 orchestrator_agent = Agent(

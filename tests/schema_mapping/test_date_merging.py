@@ -3,6 +3,7 @@ Tests for date handling in schema_mapping.functions: reformatting dates to
 a consistent ISO representation, detecting month-level vs day-level
 granularity, and collapsing duplicate rows on a merge key.
 """
+
 import pandas as pd
 import pytest
 
@@ -37,14 +38,21 @@ class TestNormalizeDateColumns:
         assert list(result["date"]) == ["2015-01-01", "2015-02-01"]
 
     def test_non_date_columns_are_untouched(self):
-        df = pd.DataFrame({"product_id": ["P0001", "P0002"], "date": ["2022-07-10"] * 2})
+        df = pd.DataFrame(
+            {"product_id": ["P0001", "P0002"], "date": ["2022-07-10"] * 2}
+        )
         result = _normalize_date_columns(df.copy())
         assert list(result["product_id"]) == ["P0001", "P0002"]
 
     def test_promotion_start_and_end_date_columns_are_normalized_too(self):
         """Any column ending in '_date' is treated as a date field, not just
         the column literally named 'date'."""
-        df = pd.DataFrame({"promotion_start_date": ["01/03/2022"], "promotion_end_date": ["15/03/2022"]})
+        df = pd.DataFrame(
+            {
+                "promotion_start_date": ["01/03/2022"],
+                "promotion_end_date": ["15/03/2022"],
+            }
+        )
         result = _normalize_date_columns(df.copy())
         assert result["promotion_start_date"].iloc[0] == "2022-03-01"
         assert result["promotion_end_date"].iloc[0] == "2022-03-15"
@@ -75,10 +83,12 @@ class TestDedupeByKey:
     def test_collapses_duplicate_dates_by_averaging(self):
         """Multiple rows sharing the same key value collapse into one,
         averaging numeric columns."""
-        df = pd.DataFrame({
-            "date": ["2015-01-01", "2015-01-01", "2015-02-01"],
-            "cpi_monthly": [100.0, 200.0, 150.0],
-        })
+        df = pd.DataFrame(
+            {
+                "date": ["2015-01-01", "2015-01-01", "2015-02-01"],
+                "cpi_monthly": [100.0, 200.0, 150.0],
+            }
+        )
         result = _dedupe_by_key(df, keys=["date"])
         assert len(result) == 2
         jan = result.loc[result["date"] == "2015-01-01", "cpi_monthly"].iloc[0]
@@ -87,14 +97,18 @@ class TestDedupeByKey:
     def test_noop_when_key_already_unique(self):
         df = pd.DataFrame({"date": ["2022-07-10", "2022-07-11"], "units_sold": [5, 7]})
         result = _dedupe_by_key(df, keys=["date"])
-        pd.testing.assert_frame_equal(result.reset_index(drop=True), df.reset_index(drop=True))
+        pd.testing.assert_frame_equal(
+            result.reset_index(drop=True), df.reset_index(drop=True)
+        )
 
     def test_non_numeric_columns_keep_first_value(self):
-        df = pd.DataFrame({
-            "date": ["2015-01-01", "2015-01-01"],
-            "region_note": ["Ontario", "Quebec"],
-            "cpi_monthly": [100.0, 200.0],
-        })
+        df = pd.DataFrame(
+            {
+                "date": ["2015-01-01", "2015-01-01"],
+                "region_note": ["Ontario", "Quebec"],
+                "cpi_monthly": [100.0, 200.0],
+            }
+        )
         result = _dedupe_by_key(df, keys=["date"])
         assert len(result) == 1
         assert result["region_note"].iloc[0] == "Ontario"

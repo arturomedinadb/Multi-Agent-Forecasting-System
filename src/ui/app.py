@@ -2,6 +2,7 @@
 Flask web application for running the end-to-end demand forecasting workflow via web UI.
 Workflow stages: Schema Mapping -> Feature Engineering -> Model Training
 """
+
 import asyncio
 import os
 import sys
@@ -25,8 +26,12 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from schema_mapping.run_workflow import run_full_workflow
-from ai_forecasting_agents.demand_forecasting.agents.feature_engineering_agent import orchestrator_agent
-from ai_forecasting_agents.demand_forecasting.agents.demand_forecasting_agent import training_agent
+from ai_forecasting_agents.demand_forecasting.agents.feature_engineering_agent import (
+    orchestrator_agent,
+)
+from ai_forecasting_agents.demand_forecasting.agents.demand_forecasting_agent import (
+    training_agent,
+)
 from agents import Runner, trace
 from agents.extensions.memory.sqlalchemy_session import SQLAlchemySession
 
@@ -35,7 +40,9 @@ template_dir = Path(__file__).parent / "templates"
 app = Flask(__name__, template_folder=str(template_dir))
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB max file size
 app.config["UPLOAD_FOLDER"] = PROJECT_ROOT / "uploads"
-app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
+app.config["SECRET_KEY"] = os.getenv(
+    "FLASK_SECRET_KEY", "dev-secret-key-change-in-production"
+)
 
 # Create upload directory if it doesn't exist
 app.config["UPLOAD_FOLDER"].mkdir(parents=True, exist_ok=True)
@@ -52,6 +59,7 @@ def allowed_file(filename: str) -> bool:
 # Hardcoded output file names
 MERGED_OUTPUT_FILE = "merged_output.csv"
 FEATURE_ENGINEERED_FILE = "engineered_features.csv"
+
 
 def find_merged_csv(output_dir: Path) -> Optional[Path]:
     """Find the merged CSV file in the output directory using hardcoded filename."""
@@ -91,17 +99,22 @@ async def run_feature_engineering_stage(
 
         # Run the workflow using routing
         with trace("Feature Engineering", group_id=conversation_id):
-            result = await Runner.run(orchestrator_agent, input=initial_prompt, session=session)
+            result = await Runner.run(
+                orchestrator_agent, input=initial_prompt, session=session
+            )
 
         return {
             "status": "completed",
             "success": result is not None,
-            "result": result.final_output if hasattr(result, 'final_output') else str(result),
+            "result": (
+                result.final_output if hasattr(result, "final_output") else str(result)
+            ),
             "output_file": output_file,
             "error": None,
         }
     except Exception as e:
         import traceback
+
         return {
             "status": "error",
             "success": False,
@@ -166,7 +179,9 @@ async def run_training_stage(
         return {
             "status": "completed",
             "success": result is not None,
-            "result": result.final_output if hasattr(result, 'final_output') else str(result),
+            "result": (
+                result.final_output if hasattr(result, "final_output") else str(result)
+            ),
             "conversation_id": conversation_id,
             "total_turns": len(items),
             "output_dir": output_dir,
@@ -176,6 +191,7 @@ async def run_training_stage(
         }
     except Exception as e:
         import traceback
+
         return {
             "status": "error",
             "success": False,
@@ -228,24 +244,31 @@ async def run_full_pipeline(
 
         # Wait a bit for file system to sync
         import time
+
         time.sleep(1)
-        
+
         # Find merged CSV file using hardcoded filename
         merged_csv = find_merged_csv(resolved_output)
-        
+
         if not merged_csv:
             # Wait a bit more and try again
             time.sleep(2)
             merged_csv = find_merged_csv(resolved_output)
-        
+
         if not merged_csv:
             expected_path = resolved_output / MERGED_OUTPUT_FILE
             # List all files in the output directory for debugging
             all_files = []
             if resolved_output.exists():
-                all_files = [str(f.relative_to(resolved_output)) for f in resolved_output.rglob("*") if f.is_file()]
-            
-            pipeline_result["schema_mapping"]["error"] = f"Could not find merged CSV output file at expected path: {expected_path}"
+                all_files = [
+                    str(f.relative_to(resolved_output))
+                    for f in resolved_output.rglob("*")
+                    if f.is_file()
+                ]
+
+            pipeline_result["schema_mapping"][
+                "error"
+            ] = f"Could not find merged CSV output file at expected path: {expected_path}"
             pipeline_result["schema_mapping"]["status"] = "error"
             pipeline_result["schema_mapping"]["success"] = False
             pipeline_result["schema_mapping"]["debug_info"] = {
@@ -253,7 +276,7 @@ async def run_full_pipeline(
                 "output_dir": str(resolved_output),
                 "output_dir_exists": resolved_output.exists(),
                 "all_files_in_output_dir": all_files,
-                "schema_result": schema_result
+                "schema_result": schema_result,
             }
             return pipeline_result
 
@@ -261,6 +284,7 @@ async def run_full_pipeline(
 
     except Exception as e:
         import traceback
+
         pipeline_result["schema_mapping"] = {
             "status": "error",
             "success": False,
@@ -288,6 +312,7 @@ async def run_full_pipeline(
 
     except Exception as e:
         import traceback
+
         pipeline_result["feature_engineering"] = {
             "status": "error",
             "success": False,
@@ -317,6 +342,7 @@ async def run_full_pipeline(
 
     except Exception as e:
         import traceback
+
         pipeline_result["training"] = {
             "status": "error",
             "success": False,
@@ -350,10 +376,19 @@ def run_workflow_async(
         # Determine overall status
         all_completed = all(
             stage.get("status") == "completed" and stage.get("success", False)
-            for stage in [result.get("schema_mapping", {}), result.get("feature_engineering", {}), result.get("training", {})]
+            for stage in [
+                result.get("schema_mapping", {}),
+                result.get("feature_engineering", {}),
+                result.get("training", {}),
+            ]
         )
         any_error = any(
-            stage.get("status") == "error" for stage in [result.get("schema_mapping", {}), result.get("feature_engineering", {}), result.get("training", {})]
+            stage.get("status") == "error"
+            for stage in [
+                result.get("schema_mapping", {}),
+                result.get("feature_engineering", {}),
+                result.get("training", {}),
+            ]
         )
 
         if all_completed:
@@ -361,7 +396,9 @@ def run_workflow_async(
         elif any_error:
             sessions[session_id]["status"] = "error"
         else:
-            sessions[session_id]["status"] = "partial"  # Some stages completed, some pending
+            sessions[session_id][
+                "status"
+            ] = "partial"  # Some stages completed, some pending
 
         sessions[session_id]["result"] = result
         sessions[session_id]["end_time"] = datetime.now(timezone.utc).isoformat()
@@ -451,4 +488,3 @@ def status(session_id: str):
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8002)
-

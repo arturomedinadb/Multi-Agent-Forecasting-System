@@ -7,6 +7,7 @@ This module implements a chain-based handoff pattern:
 
 This ensures deterministic flow: Agent → Evaluator → Orchestrator
 """
+
 from agents import Agent
 
 from ..functions import (
@@ -23,7 +24,6 @@ from ..functions import (
     get_all_dataset_metadata,
 )
 from ..prompts.factory import get_renderer
-
 
 # Forward declarations for handoffs
 workflow_orchestrator_agent = None
@@ -73,7 +73,11 @@ data_prep_evaluation_agent = Agent(
     name="DataPrepEvaluationAgent",
     model=MODEL_DEFAULT,
     instructions=_renderer.render("DataPrepEvaluationAgent"),
-    tools=[evaluate_data_prep_agent, generate_summary_report, query_conversation_history],
+    tools=[
+        evaluate_data_prep_agent,
+        generate_summary_report,
+        query_conversation_history,
+    ],
     handoffs=[],  # Set after orchestrator is built
 )
 
@@ -83,7 +87,11 @@ column_mapping_evaluation_agent = Agent(
     name="ColumnMappingEvaluationAgent",
     model=MODEL_DEFAULT,
     instructions=_renderer.render("ColumnMappingEvaluationAgent"),
-    tools=[evaluate_column_mapping_agent, generate_summary_report, query_conversation_history],
+    tools=[
+        evaluate_column_mapping_agent,
+        generate_summary_report,
+        query_conversation_history,
+    ],
     handoffs=[],  # Set after orchestrator is built
 )
 
@@ -93,7 +101,12 @@ data_integration_evaluation_agent = Agent(
     name="DataIntegrationEvaluationAgent",
     model=MODEL_DEFAULT,
     instructions=_renderer.render("DataIntegrationEvaluationAgent"),
-    tools=[evaluate_data_integration_agent, validate_final_dataset, generate_summary_report, query_conversation_history],
+    tools=[
+        evaluate_data_integration_agent,
+        validate_final_dataset,
+        generate_summary_report,
+        query_conversation_history,
+    ],
     handoffs=[],  # Set after orchestrator is built
 )
 
@@ -102,12 +115,12 @@ def create_workflow_orchestrator_agent(instructions: str) -> Agent:
     """
     Instantiate the Workflow Orchestrator agent with runtime instructions and
     configure chain-based handoffs:
-    
+
     Chain Pattern:
     - Orchestrator → Work Agents (DataPrep, ColumnMapping, DataIntegration)
     - Work Agents → Their Evaluation Agents
     - Evaluation Agents → Back to Orchestrator
-    
+
     This ensures deterministic flow where each work agent automatically
     routes to its evaluator, which then returns results to the orchestrator.
     """
@@ -131,7 +144,7 @@ def create_workflow_orchestrator_agent(instructions: str) -> Agent:
     data_prep_agent.handoffs = [data_prep_evaluation_agent]
     column_mapping_agent.handoffs = [column_mapping_evaluation_agent]
     data_integration_agent.handoffs = [data_integration_evaluation_agent]
-    
+
     # Each evaluator hands back to orchestrator
     data_prep_evaluation_agent.handoffs = [orchestrator]
     column_mapping_evaluation_agent.handoffs = [orchestrator]
@@ -139,5 +152,3 @@ def create_workflow_orchestrator_agent(instructions: str) -> Agent:
 
     workflow_orchestrator_agent = orchestrator
     return orchestrator
-
-

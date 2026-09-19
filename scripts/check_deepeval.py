@@ -12,6 +12,7 @@ Verifies, in order:
 Usage:
     uv run python scripts/check_deepeval.py
 """
+
 import asyncio
 import json
 import os
@@ -38,6 +39,7 @@ def check_imports() -> bool:
 
     try:
         from deepeval.test_case import LLMTestCase, ToolCall  # noqa: F401
+
         print("   deepeval.test_case: OK")
     except ImportError as e:
         print("   deepeval.test_case: FAILED ->", e)
@@ -45,6 +47,7 @@ def check_imports() -> bool:
 
     try:
         from deepeval.metrics import TaskCompletionMetric  # noqa: F401
+
         print("   deepeval.metrics.TaskCompletionMetric: OK")
     except ImportError as e:
         print("   deepeval.metrics.TaskCompletionMetric: FAILED ->", e)
@@ -56,12 +59,14 @@ def check_imports() -> bool:
             TypeCompatibilityMetric,
             SemanticSimilarityMetric,
         )
+
         print("   schema_mapping.evaluation.metrics: OK")
     except ImportError as e:
         print("   schema_mapping.evaluation.metrics: FAILED ->", e)
         all_ok = False
 
     import deepeval
+
     print("   deepeval version:", deepeval.__version__)
 
     return all_ok
@@ -78,8 +83,18 @@ def run_synthetic_evaluation():
             {
                 "source_file": "x.csv",
                 "mappings": [
-                    {"source_column": "transaction_date", "target_column": "date", "confidence": 0.95, "reasoning": "date match"},
-                    {"source_column": "prod_code", "target_column": "product_id", "confidence": 0.9, "reasoning": "id match"},
+                    {
+                        "source_column": "transaction_date",
+                        "target_column": "date",
+                        "confidence": 0.95,
+                        "reasoning": "date match",
+                    },
+                    {
+                        "source_column": "prod_code",
+                        "target_column": "product_id",
+                        "confidence": 0.9,
+                        "reasoning": "id match",
+                    },
                 ],
             }
         ]

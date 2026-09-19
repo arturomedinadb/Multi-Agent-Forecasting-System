@@ -9,14 +9,16 @@ from typing import Any, Dict, Iterable
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 import yaml
 
-
 # ---- Jinja environment & custom filters ----------------------------------------------------------
+
 
 def _tojson_compact(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
 
+
 def _tojson_pretty(value: Any, indent: int = 2) -> str:
     return json.dumps(value, indent=indent, ensure_ascii=False)
+
 
 def _ensure_triple_backticks(value: str, lang: str = "json") -> str:
     v = value.strip()
@@ -24,16 +26,19 @@ def _ensure_triple_backticks(value: str, lang: str = "json") -> str:
         return v
     return f"```{lang}\n{v}\n```"
 
+
 def _reject_none(value: Any, name: str) -> Any:
     if value is None:
         raise ValueError(f"Missing required variable '{name}' (got None)")
     return value
+
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 # ---- Registry loading ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class TemplateSpec:
@@ -60,6 +65,7 @@ class Registry:
 
 
 # ---- Renderer ------------------------------------------------------------------------------------
+
 
 class PromptRenderer:
     """
@@ -97,14 +103,17 @@ class PromptRenderer:
         # validate required vars presence (exist in kwargs, non-None)
         for name in spec.required_vars:
             if name not in kwargs:
-                raise ValueError(f"Missing required variable '{name}' for prompt '{prompt_key}'")
+                raise ValueError(
+                    f"Missing required variable '{name}' for prompt '{prompt_key}'"
+                )
             _reject_none(kwargs[name], name)
 
         try:
-            template = self._env.get_template(Path(spec.path).relative_to(self._templates_root).as_posix())
+            template = self._env.get_template(
+                Path(spec.path).relative_to(self._templates_root).as_posix()
+            )
         except (TemplateNotFound, ValueError):
             template = self._env.get_template(spec.path)
 
         rendered = template.render(**kwargs)
         return rendered
-

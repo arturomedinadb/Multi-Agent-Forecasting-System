@@ -5,6 +5,7 @@ create_model_configs' per-model-type hyperparameter assignment.
 Async tools are invoked via asyncio.run() directly (not a pytest-asyncio
 marker) so these tests don't depend on any pytest plugin being installed.
 """
+
 import asyncio
 import json
 
@@ -31,7 +32,12 @@ class TestTrainModels:
         than raising."""
         all_model_configs = {
             "configs": [
-                {"model_type": "xgboost", "model_name": "x", "model_uuid": "1", "hyperparameters": {}}
+                {
+                    "model_type": "xgboost",
+                    "model_name": "x",
+                    "model_uuid": "1",
+                    "hyperparameters": {},
+                }
             ],
             "total_configs": 1,
             "iteration": 1,
@@ -49,10 +55,12 @@ class TestTrainModels:
 
 class TestCreateModelConfigs:
     def test_each_model_type_gets_its_own_hyperparameters(self):
-        hyperparameters_json = json.dumps({
-            "xgboost": {"max_depth": 3},
-            "lightgbm": {"max_depth": 9},
-        })
+        hyperparameters_json = json.dumps(
+            {
+                "xgboost": {"max_depth": 3},
+                "lightgbm": {"max_depth": 9},
+            }
+        )
         result = _invoke(
             create_model_configs,
             model_types=["xgboost", "lightgbm"],
