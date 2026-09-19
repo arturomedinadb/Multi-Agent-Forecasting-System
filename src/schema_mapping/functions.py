@@ -725,10 +725,17 @@ def run_generate_mapped_csvs(
                     raw_mappings = _parse_json_tolerant(fixed_json)
                     print(f"DEBUG: Successfully parsed after fixing common JSON issues")
                 except json.JSONDecodeError:
-                    # Last resort: salvage just the first complete JSON value,
-                    # discarding anything malformed/extra the LLM appended
-                    # after it (e.g. a stray second object tacked on the end).
+                    # Salvage just the first complete JSON value, discarding
+                    # anything malformed/extra the LLM appended after it
+                    # (e.g. a stray second object tacked on the end).
                     raw_mappings = _extract_first_json_tolerant(cleaned_mappings)
+                    if not raw_mappings:
+                        # Or the argument was cut off mid-document, in which
+                        # case keep the mappings that did arrive intact
+                        # rather than losing every file's mapping.
+                        raw_mappings = _salvage_truncated_json(cleaned_mappings)
+                        if raw_mappings:
+                            print("DEBUG: recovered mappings from a truncated argument")
                     if not raw_mappings:
                         raise json_err  # genuinely unrecoverable
 
@@ -1302,6 +1309,54 @@ def _extract_first_json_tolerant(text: str) -> Any:
     if result:
         return result
     return _extract_first_json(text.replace("\\", "/"))
+
+
+def _salvage_truncated_json(text: str) -> Any:
+    """Parse the complete prefix of a JSON document that was cut off mid-way.
+
+    A model writing a long argument can stop partway through, leaving a
+    document whose opening brackets are never closed. Everything up to the
+    last fully-closed element is still valid, so this truncates there and
+    closes the brackets that remain open. Returns None when nothing usable
+    can be recovered.
+    """
+    closers = []
+    last_complete = None
+    in_string = False
+    escaped = False
+
+    for index, char in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            closers.append("}")
+        elif char == "[":
+            closers.append("]")
+        elif char in "}]":
+            if closers:
+                closers.pop()
+            # An element finished here, so the text up to this point plus
+            # the still-open closers forms a parseable document.
+            last_complete = (index + 1, list(closers))
+
+    if not last_complete:
+        return None
+
+    end, remaining = last_complete
+    candidate = text[:end] + "".join(reversed(remaining))
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        return None
 
 
 def _sanitize_json_string(json_str: str) -> str:
