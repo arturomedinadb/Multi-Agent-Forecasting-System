@@ -80,7 +80,11 @@ orchestrator_agent = Agent(
         ),
         feature_engineering_execution_agent.as_tool(
             tool_name="feature_engineering_execution",
-            tool_description="Execute the complete feature engineering pipeline",
+            tool_description=(
+                "Execute the complete feature engineering pipeline. The input "
+                "MUST include the INPUT FILE path, the OUTPUT FILE path, and the "
+                "feature configuration - the pipeline cannot run without all three."
+            ),
         ),
     ],
     model="gpt-4o-mini",

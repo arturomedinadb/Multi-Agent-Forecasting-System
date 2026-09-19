@@ -2,6 +2,8 @@
 Feature engineering functions for demand forecasting.
 """
 
+import os
+
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple, Union
@@ -613,10 +615,24 @@ def process_feature_engineering_pipeline(
     """
     print("Executing feature engineering pipeline...")
 
+    # The orchestrator forwards its feature config to a sub-agent that does
+    # not always receive the file paths with it, leaving the sub-agent to
+    # guess them. Fall back to the paths the pipeline runner recorded so a
+    # guessed path doesn't fail the whole stage.
+    if not os.path.exists(input_file):
+        env_input = os.getenv("FEATURE_ENGINEERING_INPUT_FILE")
+        if env_input and os.path.exists(env_input):
+            print(f"Input file '{input_file}' not found - using '{env_input}' instead")
+            input_file = env_input
+            output_file = os.getenv("FEATURE_ENGINEERING_OUTPUT_FILE", output_file)
+
     start_time = datetime.now()
     errors = []
     warnings_list = []
     feature_set = FeatureSet(feature_names=[], feature_types={})
+    # Set before the try so the error path can report a shape even when
+    # reading the input file is what failed.
+    original_shape = (0, 0)
 
     try:
         df = pd.read_csv(input_file)
@@ -732,11 +748,14 @@ def process_feature_engineering_pipeline(
     except Exception as e:
         processing_time = (datetime.now() - start_time).total_seconds()
         errors.append(f"Pipeline error: {str(e)}")
+        # Surface the cause: without this the caller only ever sees the
+        # SDK's generic "an error occurred while running the tool".
+        print(f"TOOL ERROR in process_feature_engineering_pipeline: {e}")
 
         return FeatureEngineeringResult(
             success=False,
-            input_shape=df.shape,
-            output_shape=df.shape,
+            input_shape=original_shape,
+            output_shape=original_shape,
             features_created=0,
             feature_set=feature_set,
             processing_time=processing_time,
