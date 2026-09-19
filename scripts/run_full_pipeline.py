@@ -66,6 +66,11 @@ async def run_feature_engineering_stage(
         create_tables=True,
     )
 
+    # Recorded so the pipeline tool can recover them if the orchestrator
+    # forwards its config to the execution sub-agent without the paths.
+    os.environ["FEATURE_ENGINEERING_INPUT_FILE"] = input_file
+    os.environ["FEATURE_ENGINEERING_OUTPUT_FILE"] = output_file
+
     initial_prompt = f"""
     You are tasked with feature engineering for demand forecasting.
 
@@ -81,9 +86,19 @@ async def run_feature_engineering_stage(
             orchestrator_agent, input=initial_prompt, session=session
         )
 
+    # The agent finishing its conversation says nothing about whether it
+    # actually wrote the engineered dataset, so verify the file on disk.
+    engineered = Path(output_file)
+    produced = engineered.exists() and engineered.stat().st_size > 0
+
     return {
-        "status": "completed",
-        "success": result is not None,
+        "status": "completed" if produced else "error",
+        "success": produced,
+        "error": (
+            None
+            if produced
+            else f"Feature engineering reported completion but did not write {output_file}"
+        ),
         "result": (
             result.final_output if hasattr(result, "final_output") else str(result)
         ),
@@ -124,12 +139,22 @@ async def run_training_stage(
         )
 
     items = await session.get_items()
-    model_files = list(Path(inference_dir).glob("**/*.pkl"))
+
+    # A finished conversation is not evidence that a model was trained, so
+    # require an actual model artifact on disk before calling this a success.
+    model_files = sorted(Path(inference_dir).glob("**/*.pkl")) + sorted(
+        Path(output_dir).glob("**/*.pkl")
+    )
     best_model_file = model_files[-1] if model_files else None
 
     return {
-        "status": "completed",
-        "success": result is not None,
+        "status": "completed" if best_model_file else "error",
+        "success": best_model_file is not None,
+        "error": (
+            None
+            if best_model_file
+            else "Training reported completion but produced no model file (.pkl)"
+        ),
         "result": (
             result.final_output if hasattr(result, "final_output") else str(result)
         ),
