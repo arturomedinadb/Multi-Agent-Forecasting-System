@@ -82,9 +82,26 @@ async def run_feature_engineering_stage(
     """
 
     with trace("Feature Engineering", group_id=conversation_id):
-        result = await Runner.run(
-            orchestrator_agent, input=initial_prompt, session=session
-        )
+        try:
+            result = await Runner.run(
+                orchestrator_agent,
+                input=initial_prompt,
+                # This orchestrator calls three sub-agents in sequence and
+                # may retry them, which does not fit the SDK's default of 10.
+                max_turns=50,
+                session=session,
+            )
+        except Exception as e:
+            # An SDK or model failure must be reported as a stage result
+            # rather than crashing the whole pipeline.
+            print(f"ERROR: feature engineering failed: {e}")
+            return {
+                "status": "error",
+                "success": False,
+                "error": str(e),
+                "result": None,
+                "output_file": output_file,
+            }
 
     # The agent finishing its conversation says nothing about whether it
     # actually wrote the engineered dataset, so verify the file on disk.
@@ -134,26 +151,46 @@ async def run_training_stage(
     """
 
     with trace("Demand Forecasting Training", group_id=conversation_id):
-        result = await Runner.run(
-            training_agent, input=initial_message, max_turns=100, session=session
-        )
+        try:
+            result = await Runner.run(
+                training_agent, input=initial_message, max_turns=100, session=session
+            )
+        except Exception as e:
+            # An SDK or model failure must be reported as a stage result
+            # rather than crashing the whole pipeline.
+            print(f"ERROR: training failed: {e}")
+            return {
+                "status": "error",
+                "success": False,
+                "error": str(e),
+                "result": None,
+                "conversation_id": conversation_id,
+                "model_file": None,
+            }
 
     items = await session.get_items()
 
-    # A finished conversation is not evidence that a model was trained, so
-    # require an actual model artifact on disk before calling this a success.
-    model_files = sorted(Path(inference_dir).glob("**/*.pkl")) + sorted(
-        Path(output_dir).glob("**/*.pkl")
-    )
+    # A finished conversation is not evidence that anything was produced.
+    # Training intermediate models is not the deliverable either - the stage
+    # has only done its job once a model is saved for inference and test
+    # predictions are written, so require both.
+    model_files = sorted(Path(inference_dir).glob("**/*.pkl"))
+    prediction_files = sorted(Path(inference_dir).glob("**/test_predictions.csv"))
     best_model_file = model_files[-1] if model_files else None
 
+    missing = []
+    if not best_model_file:
+        missing.append("no model saved for inference")
+    if not prediction_files:
+        missing.append("no test_predictions.csv")
+
     return {
-        "status": "completed" if best_model_file else "error",
-        "success": best_model_file is not None,
+        "status": "completed" if not missing else "error",
+        "success": not missing,
         "error": (
             None
-            if best_model_file
-            else "Training reported completion but produced no model file (.pkl)"
+            if not missing
+            else f"Training reported completion but {' and '.join(missing)}"
         ),
         "result": (
             result.final_output if hasattr(result, "final_output") else str(result)
@@ -161,6 +198,7 @@ async def run_training_stage(
         "conversation_id": conversation_id,
         "total_turns": len(items),
         "model_file": str(best_model_file) if best_model_file else None,
+        "predictions_file": str(prediction_files[-1]) if prediction_files else None,
     }
 
 
