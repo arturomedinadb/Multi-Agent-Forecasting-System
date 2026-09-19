@@ -474,10 +474,16 @@ MIT License - See LICENSE file in project root
 
 ## 👥 Authors
 
+**Base project**
+
 - Katherine Gong
 - Ayda Elzohbi
 - Arturo Medina
 - Arial Huang
+
+**This version**
+
+Additions and enhancements to the current version are by Arturo Medina.
 
 ## 🆘 Support
 

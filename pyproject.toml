@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "AI-powered agent for end-to-end demand forecasting"
 readme = "README.md"
 license = "MIT"
+# Base project by Katherine Gong, Ayda Elzohbi, Arturo Medina and Arial Huang.
+# Additions and enhancements in this version are by Arturo Medina.
 authors = [
     {name = "Katherine Gong"},
     {name = "Ayda Elzohbi"},
@@ -15,7 +17,7 @@ authors = [
     {name = "Arial Huang"},
 ]
 maintainers = [
-    {name = "Katherine Gong", email = "katherine.gong@example.com"},
+    {name = "Arturo Medina"},
 ]
 keywords = [
     "ai", 

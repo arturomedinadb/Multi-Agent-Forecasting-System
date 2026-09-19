@@ -331,10 +331,16 @@ A Flask web UI that automates demand forecasting: upload CSVs and let AI agents 
 
 ## Authors
 
-- **Ayda Elzohbi** 
-- **Katherine Gong** 
-- **Arial Huang** 
+**Base project**
+
+- **Ayda Elzohbi**
+- **Katherine Gong**
+- **Arial Huang**
 - **Arturo Medina**
+
+**This version**
+
+Additions and enhancements to the current version are by **Arturo Medina**.
 
 ---
 
