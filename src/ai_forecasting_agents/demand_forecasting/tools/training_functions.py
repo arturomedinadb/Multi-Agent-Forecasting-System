@@ -515,10 +515,12 @@ async def apply_hyperparameter_tuning(
             # Create base model class with fixed parameters
             base_model = model_class(**base_params)
 
-            # Use RMSE as scoring metric (lower is better)
-            rmse_scorer = make_scorer(
-                mean_squared_error, squared=False, greater_is_better=False
-            )
+            # Use RMSE as scoring metric (lower is better). The built-in
+            # scorer is used rather than wrapping mean_squared_error: its
+            # `squared` argument was removed in scikit-learn 1.6, and a
+            # scorer that raises makes every fold score NaN rather than
+            # failing outright, so tuning would compare nothing.
+            rmse_scorer = "neg_root_mean_squared_error"
 
             # Use GridSearchCV with TimeSeriesSplit
             grid_search = GridSearchCV(
