@@ -14,7 +14,6 @@ from ai_forecasting_agents.demand_forecasting.tools.feature_functions import (
     process_feature_engineering_pipeline,
 )
 
-
 CONFIG = {
     "lag_features": {
         "target_column": "units_sold",
@@ -88,7 +87,9 @@ class TestFeaturePipelinePathFallback:
         _write_input(given_input)
         given_output = tmp_path / "given_out.csv"
 
-        monkeypatch.setenv("FEATURE_ENGINEERING_INPUT_FILE", str(tmp_path / "other.csv"))
+        monkeypatch.setenv(
+            "FEATURE_ENGINEERING_INPUT_FILE", str(tmp_path / "other.csv")
+        )
 
         result = _invoke(
             input_file=str(given_input),
@@ -98,3 +99,36 @@ class TestFeaturePipelinePathFallback:
 
         assert result.success is True
         assert given_output.exists()
+
+
+class TestAnalyzeDataStructureRepeatGuard:
+    """A repeated analysis of the same file must return a short reminder so
+    an orchestrator that keeps re-analysing cannot spend its entire turn
+    budget here instead of reaching the later pipeline steps."""
+
+    def test_second_analysis_of_same_file_is_short_circuited(self, tmp_path):
+        from ai_forecasting_agents.demand_forecasting.tools import feature_functions
+
+        input_path = tmp_path / "analyse_me.csv"
+        _write_input(input_path)
+        feature_functions._analysed_inputs.pop(str(input_path), None)
+
+        def _analyse():
+            async def _run():
+                result = feature_functions.analyze_data_structure.on_invoke_tool(
+                    None, json.dumps({"input_file": str(input_path)})
+                )
+                if hasattr(result, "__await__"):
+                    result = await result
+                return result
+
+            return asyncio.run(_run())
+
+        first = _analyse()
+        assert "columns" in first
+
+        second = _analyse()
+        assert second.get("status") == "already_analysed"
+        assert "note" in second
+
+        feature_functions._analysed_inputs.pop(str(input_path), None)

@@ -3,6 +3,7 @@ Training functions for demand forecasting models.
 """
 
 import json
+import glob
 import os
 import pandas as pd
 import numpy as np
@@ -891,6 +892,16 @@ async def train_ensemble_models(
         for model_info in base_models:
             model_name = model_info["model_name"]
             model_path = f"{models_directory}/{model_name}.pkl"
+
+            if not os.path.exists(model_path):
+                # Models are written to a per-session subdirectory, so the
+                # flat path misses them whenever the caller passes the parent
+                # models directory rather than that subdirectory.
+                matches = sorted(
+                    glob.glob(f"{models_directory}/**/{model_name}.pkl", recursive=True)
+                )
+                if matches:
+                    model_path = matches[-1]
 
             if os.path.exists(model_path):
                 model = joblib.load(model_path)

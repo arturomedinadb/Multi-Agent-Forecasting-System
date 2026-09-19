@@ -573,15 +573,39 @@ def validate_feature_set(
     return validation_results
 
 
+# Tracks input files already analysed, so a repeated call returns a short
+# reminder instead of re-running the analysis and re-dumping its (large)
+# result into the conversation. Without this an orchestrator that keeps
+# re-analysing can spend its whole turn budget here and never reach the
+# recommendation and execution steps.
+_analysed_inputs: Dict[str, bool] = {}
+
+
 @function_tool
 def analyze_data_structure(input_file: str) -> Dict[str, Union[str, int, float, bool]]:
     """
     Analyze the structure and characteristics of the input data.
+
+    Call this once per input file. Later calls for the same file return a
+    reminder rather than repeating the analysis.
     """
     print("-" * 60)
     print("Analyzing data structure...")
 
+    if _analysed_inputs.get(input_file):
+        print(f"'{input_file}' was already analysed - not repeating it")
+        return {
+            "status": "already_analysed",
+            "input_file_path": input_file,
+            "note": (
+                "This file was already analysed earlier in this session. Reuse "
+                "that earlier result and move on to generating feature "
+                "recommendations and executing the pipeline."
+            ),
+        }
+
     df = pd.read_csv(input_file)
+    _analysed_inputs[input_file] = True
 
     # Perform analysis
     analysis = {
