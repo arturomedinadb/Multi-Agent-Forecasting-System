@@ -467,27 +467,43 @@ async def save_best_model_for_inference(
             else str(best_model_type)
         )
 
-        # Map model types to model classes
-        SUPPORTED_MODELS = {
-            "xgboost": xgb.XGBRegressor,
-            "random_forest": RandomForestRegressor,
-            "lightgbm": lgb.LGBMRegressor,
-            "catboost": cb.CatBoostRegressor,
-        }
-
-        model_class = SUPPORTED_MODELS.get(model_type_str)
-        if not model_class:
-            return {
-                "success": False,
-                "error": f"Unsupported model type: {model_type_str}",
-                "message": f"Model type {model_type_str} is not supported for retraining",
+        if model_type_str == "ensemble":
+            # An ensemble has no single estimator class or hyperparameter
+            # set to reconstruct it from - load the fitted object saved by
+            # train_ensemble_models and refit it below instead.
+            trained_model_path = best_model_eval.model_path
+            if not trained_model_path or not os.path.exists(trained_model_path):
+                return {
+                    "success": False,
+                    "error": f"Ensemble model file not found: {trained_model_path}",
+                    "message": "Cannot retrain ensemble model - its saved file is missing",
+                }
+            print(
+                f"{datetime.now()} - Loading ensemble model for retraining: {trained_model_path}"
+            )
+            inference_model = joblib.load(trained_model_path)
+        else:
+            # Map model types to model classes
+            SUPPORTED_MODELS = {
+                "xgboost": xgb.XGBRegressor,
+                "random_forest": RandomForestRegressor,
+                "lightgbm": lgb.LGBMRegressor,
+                "catboost": cb.CatBoostRegressor,
             }
 
-        # Create new model with saved hyperparameters
-        print(
-            f"{datetime.now()} - Creating model with hyperparameters: {hyperparameters}"
-        )
-        inference_model = model_class(**hyperparameters)
+            model_class = SUPPORTED_MODELS.get(model_type_str)
+            if not model_class:
+                return {
+                    "success": False,
+                    "error": f"Unsupported model type: {model_type_str}",
+                    "message": f"Model type {model_type_str} is not supported for retraining",
+                }
+
+            # Create new model with saved hyperparameters
+            print(
+                f"{datetime.now()} - Creating model with hyperparameters: {hyperparameters}"
+            )
+            inference_model = model_class(**hyperparameters)
 
         # Train on combined train+val data
         print(f"{datetime.now()} - Training model on combined train+val data...")

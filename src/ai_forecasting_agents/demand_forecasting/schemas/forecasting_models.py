@@ -16,6 +16,7 @@ class ModelType(str, Enum):
     RANDOM_FOREST = "random_forest"
     LIGHTGBM = "lightgbm"
     CATBOOST = "catboost"
+    ENSEMBLE = "ensemble"
 
 
 class ModelConfig(BaseModel):
