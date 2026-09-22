@@ -101,34 +101,49 @@ class TestFeaturePipelinePathFallback:
         assert given_output.exists()
 
 
-class TestAnalyzeDataStructureRepeatGuard:
-    """A repeated analysis of the same file must return a short reminder so
-    an orchestrator that keeps re-analysing cannot spend its entire turn
-    budget here instead of reaching the later pipeline steps."""
+class TestAnalyzeDataStructureCache:
+    """Repeated analysis of the same file replays the first result, so an
+    orchestrator that keeps re-analysing cannot spend its whole turn budget
+    here instead of reaching the later pipeline steps. The replayed value
+    keeps the same shape, because callers validate it against a schema."""
 
-    def test_second_analysis_of_same_file_is_short_circuited(self, tmp_path):
+    def _analyse(self, feature_functions, path):
+        async def _run():
+            result = feature_functions.analyze_data_structure.on_invoke_tool(
+                None, json.dumps({"input_file": str(path)})
+            )
+            if hasattr(result, "__await__"):
+                result = await result
+            return result
+
+        return asyncio.run(_run())
+
+    def test_repeat_analysis_returns_the_same_result(self, tmp_path):
         from ai_forecasting_agents.demand_forecasting.tools import feature_functions
 
         input_path = tmp_path / "analyse_me.csv"
         _write_input(input_path)
-        feature_functions._analysed_inputs.pop(str(input_path), None)
+        feature_functions._analysis_cache.clear()
 
-        def _analyse():
-            async def _run():
-                result = feature_functions.analyze_data_structure.on_invoke_tool(
-                    None, json.dumps({"input_file": str(input_path)})
-                )
-                if hasattr(result, "__await__"):
-                    result = await result
-                return result
+        first = self._analyse(feature_functions, input_path)
+        second = self._analyse(feature_functions, input_path)
 
-            return asyncio.run(_run())
-
-        first = _analyse()
         assert "columns" in first
+        assert second == first
 
-        second = _analyse()
-        assert second.get("status") == "already_analysed"
-        assert "note" in second
+        feature_functions._analysis_cache.clear()
 
-        feature_functions._analysed_inputs.pop(str(input_path), None)
+    def test_same_file_spelled_differently_hits_one_cache_entry(self, tmp_path):
+        from ai_forecasting_agents.demand_forecasting.tools import feature_functions
+
+        input_path = tmp_path / "analyse_me.csv"
+        _write_input(input_path)
+        feature_functions._analysis_cache.clear()
+
+        self._analyse(feature_functions, input_path)
+        # Same file, different spelling of the same path.
+        self._analyse(feature_functions, str(input_path).replace("\\", "/"))
+
+        assert len(feature_functions._analysis_cache) == 1
+
+        feature_functions._analysis_cache.clear()

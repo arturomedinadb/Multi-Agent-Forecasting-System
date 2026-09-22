@@ -573,12 +573,17 @@ def validate_feature_set(
     return validation_results
 
 
-# Tracks input files already analysed, so a repeated call returns a short
-# reminder instead of re-running the analysis and re-dumping its (large)
-# result into the conversation. Without this an orchestrator that keeps
-# re-analysing can spend its whole turn budget here and never reach the
-# recommendation and execution steps.
-_analysed_inputs: Dict[str, bool] = {}
+# Caches the analysis of each input file. The result is deterministic, so a
+# repeated call returns the stored result rather than re-reading the file
+# and recomputing it. The cached value keeps the same shape as a fresh one,
+# because callers validate this result against a schema.
+_analysis_cache: Dict[str, Dict[str, Union[str, int, float, bool]]] = {}
+
+
+def _analysis_cache_key(input_file: str) -> str:
+    """Key paths by their resolved form, so the same file spelled with
+    different separators or relative prefixes maps to one entry."""
+    return os.path.normcase(os.path.abspath(input_file))
 
 
 @function_tool
@@ -586,26 +591,18 @@ def analyze_data_structure(input_file: str) -> Dict[str, Union[str, int, float, 
     """
     Analyze the structure and characteristics of the input data.
 
-    Call this once per input file. Later calls for the same file return a
-    reminder rather than repeating the analysis.
+    The result for a given file is cached, so calling this repeatedly for
+    the same file returns the first result instead of recomputing it.
     """
     print("-" * 60)
     print("Analyzing data structure...")
 
-    if _analysed_inputs.get(input_file):
-        print(f"'{input_file}' was already analysed - not repeating it")
-        return {
-            "status": "already_analysed",
-            "input_file_path": input_file,
-            "note": (
-                "This file was already analysed earlier in this session. Reuse "
-                "that earlier result and move on to generating feature "
-                "recommendations and executing the pipeline."
-            ),
-        }
+    cache_key = _analysis_cache_key(input_file)
+    if cache_key in _analysis_cache:
+        print(f"'{input_file}' was already analysed - reusing that result")
+        return _analysis_cache[cache_key]
 
     df = pd.read_csv(input_file)
-    _analysed_inputs[input_file] = True
 
     # Perform analysis
     analysis = {
@@ -626,6 +623,8 @@ def analyze_data_structure(input_file: str) -> Dict[str, Union[str, int, float, 
     print("-" * 60)
     print(f"ANALYSIS: \n{analysis}")
     print("-" * 60)
+
+    _analysis_cache[cache_key] = analysis
 
     return analysis
 

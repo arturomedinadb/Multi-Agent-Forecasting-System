@@ -66,25 +66,59 @@ data_analysis_agent = Agent(
     handoff_description="Analyzes input datasets and provides comprehensive data structure analysis for feature engineering",
 )
 
+
+def _cache_repeat_calls(tool):
+    """Make a sub-agent tool run at most once per distinct input.
+
+    The orchestrator is told to call each tool exactly once but does not
+    always comply, and re-running a sub-agent is expensive: it repeats the
+    whole nested conversation. Replaying the first result keeps a repeated
+    call cheap and consistent, and appends a note pointing the orchestrator
+    at the next step.
+    """
+    run_tool = tool.on_invoke_tool
+    results: dict[str, str] = {}
+
+    async def invoke_once(ctx, input_json):
+        if input_json in results:
+            print(f"TOOL: '{tool.name}' already ran for this input - replaying result")
+            return results[input_json]
+        result = await run_tool(ctx, input_json)
+        results[input_json] = (
+            f"{result}\n\n[This step is complete. Do not call {tool.name} again - "
+            "use this result and move on to the next step.]"
+        )
+        return result
+
+    tool.on_invoke_tool = invoke_once
+    return tool
+
+
 orchestrator_agent = Agent(
     name="orchestrator_agent",
     instructions=_renderer.render("orchestrator_agent"),
     tools=[
-        data_analysis_agent.as_tool(
-            tool_name="input_data_analysis",
-            tool_description="Analyze input datasets and provide comprehensive data structure analysis",
+        _cache_repeat_calls(
+            data_analysis_agent.as_tool(
+                tool_name="input_data_analysis",
+                tool_description="Analyze input datasets and provide comprehensive data structure analysis",
+            )
         ),
-        feature_recommendation_agent.as_tool(
-            tool_name="feature_recommendation",
-            tool_description="Analyze data structure and generate intelligent feature engineering recommendations",
+        _cache_repeat_calls(
+            feature_recommendation_agent.as_tool(
+                tool_name="feature_recommendation",
+                tool_description="Analyze data structure and generate intelligent feature engineering recommendations",
+            )
         ),
-        feature_engineering_execution_agent.as_tool(
-            tool_name="feature_engineering_execution",
-            tool_description=(
-                "Execute the complete feature engineering pipeline. The input "
-                "MUST include the INPUT FILE path, the OUTPUT FILE path, and the "
-                "feature configuration - the pipeline cannot run without all three."
-            ),
+        _cache_repeat_calls(
+            feature_engineering_execution_agent.as_tool(
+                tool_name="feature_engineering_execution",
+                tool_description=(
+                    "Execute the complete feature engineering pipeline. The input "
+                    "MUST include the INPUT FILE path, the OUTPUT FILE path, and the "
+                    "feature configuration - the pipeline cannot run without all three."
+                ),
+            )
         ),
     ],
     model="gpt-4o-mini",
