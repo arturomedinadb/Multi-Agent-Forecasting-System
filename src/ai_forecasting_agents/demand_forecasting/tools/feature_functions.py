@@ -6,8 +6,8 @@ import os
 
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Any, Optional, Tuple, Union
-from datetime import datetime, timedelta
+from typing import List, Dict, Optional, Tuple, Union
+from datetime import datetime
 import warnings
 from functools import wraps
 from agents import function_tool
@@ -723,9 +723,9 @@ def process_feature_engineering_pipeline(
 
         # Handle missing values
         if config.handle_missing == "forward_fill":
-            df_result = df_result.fillna(method="ffill")
+            df_result = df_result.ffill()
         elif config.handle_missing == "backward_fill":
-            df_result = df_result.fillna(method="bfill")
+            df_result = df_result.bfill()
         elif config.handle_missing == "interpolate":
             df_result = df_result.interpolate()
         elif config.handle_missing == "zero_fill":

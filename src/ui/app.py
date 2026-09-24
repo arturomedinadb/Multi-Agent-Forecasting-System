@@ -7,6 +7,8 @@ import asyncio
 import os
 import sys
 import threading
+import time
+import traceback
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,7 +75,6 @@ async def run_feature_engineering_stage(
     input_file: str,
     output_file: str,
     target_column: str = "units_sold",
-    api_key: Optional[str] = None,
 ) -> Dict:
     """Run feature engineering stage."""
     try:
@@ -113,8 +114,6 @@ async def run_feature_engineering_stage(
             "error": None,
         }
     except Exception as e:
-        import traceback
-
         return {
             "status": "error",
             "success": False,
@@ -132,7 +131,6 @@ async def run_training_stage(
     id_columns: list[str],
     target_column: str,
     model_types: list[str],
-    api_key: Optional[str] = None,
 ) -> Dict:
     """Run model training stage."""
     try:
@@ -190,8 +188,6 @@ async def run_training_stage(
             "error": None,
         }
     except Exception as e:
-        import traceback
-
         return {
             "status": "error",
             "success": False,
@@ -219,8 +215,6 @@ async def run_full_pipeline(
     resolved_output = Path(output_dir) if output_dir else PROJECT_ROOT / "output"
     resolved_output.mkdir(parents=True, exist_ok=True)
 
-    api_key = os.getenv("OPENAI_API_KEY")
-
     pipeline_result = {
         "schema_mapping": {"status": "pending"},
         "feature_engineering": {"status": "pending"},
@@ -243,8 +237,6 @@ async def run_full_pipeline(
         }
 
         # Wait a bit for file system to sync
-        import time
-
         time.sleep(1)
 
         # Find merged CSV file using hardcoded filename
@@ -266,9 +258,9 @@ async def run_full_pipeline(
                     if f.is_file()
                 ]
 
-            pipeline_result["schema_mapping"][
-                "error"
-            ] = f"Could not find merged CSV output file at expected path: {expected_path}"
+            pipeline_result["schema_mapping"]["error"] = (
+                f"Could not find merged CSV output file at expected path: {expected_path}"
+            )
             pipeline_result["schema_mapping"]["status"] = "error"
             pipeline_result["schema_mapping"]["success"] = False
             pipeline_result["schema_mapping"]["debug_info"] = {
@@ -283,8 +275,6 @@ async def run_full_pipeline(
         merged_csv_path = str(merged_csv)
 
     except Exception as e:
-        import traceback
-
         pipeline_result["schema_mapping"] = {
             "status": "error",
             "success": False,
@@ -301,7 +291,6 @@ async def run_full_pipeline(
             input_file=merged_csv_path,
             output_file=feature_output_file,
             target_column=target_column,
-            api_key=api_key,
         )
         pipeline_result["feature_engineering"] = feature_result
 
@@ -311,8 +300,6 @@ async def run_full_pipeline(
         feature_input_file = feature_result["output_file"]
 
     except Exception as e:
-        import traceback
-
         pipeline_result["feature_engineering"] = {
             "status": "error",
             "success": False,
@@ -336,13 +323,10 @@ async def run_full_pipeline(
             id_columns=id_columns,
             target_column=target_column,
             model_types=model_types,
-            api_key=api_key,
         )
         pipeline_result["training"] = training_result
 
     except Exception as e:
-        import traceback
-
         pipeline_result["training"] = {
             "status": "error",
             "success": False,
@@ -374,31 +358,24 @@ def run_workflow_async(
         )
 
         # Determine overall status
+        stages = [
+            result.get("schema_mapping", {}),
+            result.get("feature_engineering", {}),
+            result.get("training", {}),
+        ]
         all_completed = all(
             stage.get("status") == "completed" and stage.get("success", False)
-            for stage in [
-                result.get("schema_mapping", {}),
-                result.get("feature_engineering", {}),
-                result.get("training", {}),
-            ]
+            for stage in stages
         )
-        any_error = any(
-            stage.get("status") == "error"
-            for stage in [
-                result.get("schema_mapping", {}),
-                result.get("feature_engineering", {}),
-                result.get("training", {}),
-            ]
-        )
+        any_error = any(stage.get("status") == "error" for stage in stages)
 
         if all_completed:
             sessions[session_id]["status"] = "completed"
         elif any_error:
             sessions[session_id]["status"] = "error"
         else:
-            sessions[session_id][
-                "status"
-            ] = "partial"  # Some stages completed, some pending
+            # Some stages completed, some pending
+            sessions[session_id]["status"] = "partial"
 
         sessions[session_id]["result"] = result
         sessions[session_id]["end_time"] = datetime.now(timezone.utc).isoformat()
@@ -407,8 +384,6 @@ def run_workflow_async(
         sessions[session_id]["status"] = "error"
         sessions[session_id]["error"] = str(e)
         sessions[session_id]["end_time"] = datetime.now(timezone.utc).isoformat()
-        import traceback
-
         sessions[session_id]["traceback"] = traceback.format_exc()
 
 

@@ -5,9 +5,10 @@ Training functions for demand forecasting models.
 import json
 import glob
 import os
+import traceback
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, List, Union, Optional
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 import joblib
 
@@ -90,6 +91,7 @@ async def create_model_configs(
         return result
 
     except Exception as e:
+        print(f"Error in create_model_configs: {str(e)}")
         # Return a minimal valid AllModelConfigs on error
         return AllModelConfigs(
             configs=[],
@@ -141,7 +143,7 @@ async def load_and_preprocess_data(
                         df[col] = pd.to_datetime(df[col], errors="raise")
                         df = df.drop(col, axis=1)  # Drop original date column
 
-                    except:
+                    except (ValueError, TypeError):
                         # If not a date, treat as categorical
                         df[col] = pd.Categorical(df[col]).codes
 
@@ -164,7 +166,7 @@ async def load_and_preprocess_data(
         y = df[target_column]
 
         # Use TimeSeriesSplit for all sets (train, validation, test)
-        print(f"Using TimeSeriesSplit for all data splits")
+        print("Using TimeSeriesSplit for all data splits")
         total_size = len(X)
 
         # Use TimeSeriesSplit to get train and test (50-50 split)
@@ -608,8 +610,6 @@ async def apply_hyperparameter_tuning(
         )
 
         # Get session UUID from output_dir structure or use model_timestamp
-        # Try to find existing session directory
-        models_base_dir = f"{output_dir}/models"
         session_uuid = model_timestamp
 
         # Save model with timestamp in filename
@@ -667,8 +667,6 @@ async def apply_hyperparameter_tuning(
 
     except Exception as e:
         print(f"\n{datetime.now()} - Error in hyperparameter tuning: {str(e)}")
-        import traceback
-
         traceback.print_exc()
         return {
             "success": False,

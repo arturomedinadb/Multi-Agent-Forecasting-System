@@ -14,7 +14,6 @@ from ..tools.training_functions import (
     train_ensemble_models,
 )
 from ..tools.evaluation_functions import (
-    evaluate_model_performance,
     evaluate_all_models,
     check_convergence,
     save_best_model_for_inference,

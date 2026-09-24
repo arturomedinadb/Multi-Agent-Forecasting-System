@@ -5,7 +5,34 @@ from deepeval.metrics import BaseMetric
 from deepeval.test_case import LLMTestCase
 
 
-class FieldCoverageMetric(BaseMetric):
+class _ScoredMetric(BaseMetric):
+    """Shared DeepEval BaseMetric scaffolding for the metrics below: the
+    score/success/error/reason state each one tracks, plus the async
+    wrapper and success check every one of them implements identically.
+    Subclasses set their own config attributes and implement `measure`."""
+
+    def __init__(self, threshold: float, strict_mode: bool, async_mode: bool):
+        self.threshold = threshold
+        self.strict_mode = strict_mode
+        self.async_mode = async_mode
+        self.score: Optional[float] = None
+        self.success: Optional[bool] = None
+        self.score_breakdown: Dict[str, Any] = {}
+        self.reason: Optional[str] = None
+        self.error: Optional[str] = None
+
+    async def a_measure(self, test_case: LLMTestCase) -> float:
+        """Async version of measure."""
+        return self.measure(test_case)
+
+    def is_successful(self) -> bool:
+        """Check if metric evaluation was successful."""
+        if self.error is not None:
+            self.success = False
+        return self.success if self.success is not None else False
+
+
+class FieldCoverageMetric(_ScoredMetric):
     """
     Metric to evaluate how many required target schema fields were mapped.
 
@@ -19,15 +46,8 @@ class FieldCoverageMetric(BaseMetric):
         strict_mode: bool = False,
         async_mode: bool = False,
     ):
+        super().__init__(threshold, strict_mode, async_mode)
         self.required_fields = required_fields
-        self.threshold = threshold
-        self.strict_mode = strict_mode
-        self.async_mode = async_mode
-        self.score: Optional[float] = None
-        self.success: Optional[bool] = None
-        self.score_breakdown: Dict[str, Any] = {}
-        self.reason: Optional[str] = None
-        self.error: Optional[str] = None
 
     def measure(self, test_case: LLMTestCase) -> float:
         """Calculate field coverage score."""
@@ -76,22 +96,12 @@ class FieldCoverageMetric(BaseMetric):
             self.success = False
             raise
 
-    async def a_measure(self, test_case: LLMTestCase) -> float:
-        """Async version of measure."""
-        return self.measure(test_case)
-
-    def is_successful(self) -> bool:
-        """Check if metric evaluation was successful."""
-        if self.error is not None:
-            self.success = False
-        return self.success if self.success is not None else False
-
     @property
     def __name__(self):
         return "Field Coverage"
 
 
-class TypeCompatibilityMetric(BaseMetric):
+class TypeCompatibilityMetric(_ScoredMetric):
     """
     Metric to evaluate if mapped column types are compatible with target schema types.
 
@@ -105,15 +115,8 @@ class TypeCompatibilityMetric(BaseMetric):
         strict_mode: bool = True,
         async_mode: bool = False,
     ):
+        super().__init__(threshold, strict_mode, async_mode)
         self.expected_types = expected_types
-        self.threshold = threshold
-        self.strict_mode = strict_mode
-        self.async_mode = async_mode
-        self.score: Optional[float] = None
-        self.success: Optional[bool] = None
-        self.score_breakdown: Dict[str, Any] = {}
-        self.reason: Optional[str] = None
-        self.error: Optional[str] = None
 
     def _is_type_compatible(self, observed_type: str, expected_type: str) -> bool:
         """Check if observed type is compatible with expected type."""
@@ -225,22 +228,12 @@ class TypeCompatibilityMetric(BaseMetric):
             self.success = False
             raise
 
-    async def a_measure(self, test_case: LLMTestCase) -> float:
-        """Async version of measure."""
-        return self.measure(test_case)
-
-    def is_successful(self) -> bool:
-        """Check if metric evaluation was successful."""
-        if self.error is not None:
-            self.success = False
-        return self.success if self.success is not None else False
-
     @property
     def __name__(self):
         return "Type Compatibility"
 
 
-class SemanticSimilarityMetric(BaseMetric):
+class SemanticSimilarityMetric(_ScoredMetric):
     """
     Metric to evaluate semantic similarity between source and target column names.
 
@@ -255,15 +248,8 @@ class SemanticSimilarityMetric(BaseMetric):
         strict_mode: bool = False,
         async_mode: bool = False,
     ):
+        super().__init__(threshold, strict_mode, async_mode)
         self.minimum_score = minimum_score
-        self.threshold = threshold
-        self.strict_mode = strict_mode
-        self.async_mode = async_mode
-        self.score: Optional[float] = None
-        self.success: Optional[bool] = None
-        self.score_breakdown: Dict[str, Any] = {}
-        self.reason: Optional[str] = None
-        self.error: Optional[str] = None
 
     def _calculate_token_similarity(self, source: str, target: str) -> float:
         """Calculate token-based similarity between two column names."""
@@ -386,16 +372,6 @@ class SemanticSimilarityMetric(BaseMetric):
             self.score = 0.0
             self.success = False
             raise
-
-    async def a_measure(self, test_case: LLMTestCase) -> float:
-        """Async version of measure."""
-        return self.measure(test_case)
-
-    def is_successful(self) -> bool:
-        """Check if metric evaluation was successful."""
-        if self.error is not None:
-            self.success = False
-        return self.success if self.success is not None else False
 
     @property
     def __name__(self):

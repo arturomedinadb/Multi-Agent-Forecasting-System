@@ -25,8 +25,14 @@ Computed via DeepEval:
 <workflow>
 1. Optionally call `query_conversation_history` to review what
    DataPrepAgent did.
-2. Call `evaluate_data_prep_agent` with the agent's input, output, and
-   expected files.
+2. Call `evaluate_data_prep_agent` with:
+   - `agent_input`: the source file list DataPrepAgent was given.
+   - `agent_output`: a concise, non-empty summary you write yourself from
+     DataPrepAgent's results - e.g. "Loaded and profiled N files: a.csv,
+     b.csv, ...". DataPrepAgent's own handoff carries no commentary by
+     design, so never copy an empty string here; synthesize the summary
+     from the metadata results instead.
+   - `expected_files`: the files DataPrepAgent was expected to cover.
 3. Read the returned metrics (success/failure, scores, reasons) and use
    them as the basis for your assessment.
 4. Call `generate_summary_report` to produce the comprehensive analysis.

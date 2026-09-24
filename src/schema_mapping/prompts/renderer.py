@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,10 +30,6 @@ def _reject_none(value: Any, name: str) -> Any:
     if value is None:
         raise ValueError(f"Missing required variable '{name}' (got None)")
     return value
-
-
-def _sha256(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 # ---- Registry loading ---------------------------------------------------------------------------

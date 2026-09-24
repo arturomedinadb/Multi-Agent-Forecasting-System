@@ -2,30 +2,9 @@
 Feature Engineering Agent for demand forecasting using OpenAI Agents SDK.
 """
 
-import json
-import pandas as pd
-from typing import Dict, Any, Optional, List, Union
-from datetime import datetime
-import warnings
-from pydantic import BaseModel
-import os
-from agents import Agent, Runner, handoff, HandoffInputData, AgentOutputSchema
-from openai import OpenAI
+from agents import Agent, AgentOutputSchema
 
-from ..schemas.feature_models import (
-    DataAnalysisResult,
-    FeatureEngineeringConfig,
-    FeatureSet,
-    FeatureType,
-    LagFeatureConfig,
-    RollingFeatureConfig,
-    TimeFeatureConfig,
-    PromotionFeatureConfig,
-    HolidayFeatureConfig,
-    WeatherFeatureConfig,
-    EconomicFeatureConfig,
-    FeatureEngineeringResult,
-)
+from ..schemas.feature_models import DataAnalysisResult, FeatureEngineeringConfig
 
 # Import functions locally to avoid @function_tool decorator issues at module level
 from ..tools.feature_functions import (

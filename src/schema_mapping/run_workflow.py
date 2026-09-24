@@ -17,6 +17,7 @@ import asyncio
 import json
 import os
 import sys
+import traceback
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -139,7 +140,7 @@ call generate_final_workflow_report with all evaluation results.
 
     # Run the workflow with tracing enabled
     # The trace context groups all agent interactions under a single conversation_id
-    print(f"DEBUG: Starting traced workflow run")
+    print("DEBUG: Starting traced workflow run")
     print(f"DEBUG: Trace ID: {conversation_id}")
     print(f"DEBUG: Initial message length: {len(initial_message)} chars")
 
@@ -244,10 +245,10 @@ def main() -> None:
             # Convert to forward slashes to avoid LLM path confusion
             source_files.append(str(file_path).replace("\\", "/"))
         else:
-            print(f"⚠️  Warning: File not found: {file_path}")
+            print(f"WARNING: File not found: {file_path}")
 
     if not source_files:
-        print("❌ Error: No valid source files found!")
+        print("ERROR: No valid source files found!")
         sys.exit(1)
 
     row_limit = int(os.getenv("AGENT_ROW_LIMIT", "10"))
@@ -263,8 +264,6 @@ def main() -> None:
         )
     except Exception as exc:
         print(f"\n[ERROR] Workflow failed: {exc}")
-        import traceback
-
         traceback.print_exc()
         sys.exit(1)
 

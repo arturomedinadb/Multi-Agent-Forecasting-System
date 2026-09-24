@@ -2,10 +2,9 @@
 Pydantic models for feature engineering configuration and validation.
 """
 
-from datetime import date, datetime
-from typing import Optional, List, Dict, Any, Union
-from decimal import Decimal
-from pydantic import BaseModel, Field, validator, ConfigDict
+from datetime import datetime
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from enum import Enum
 
 
@@ -66,7 +65,8 @@ class LagFeatureConfig(BaseModel):
         default=None, description="Columns to group by for lag calculation"
     )
 
-    @validator("lags")
+    @field_validator("lags")
+    @classmethod
     def validate_lags(cls, v):
         if not v or any(lag <= 0 for lag in v):
             raise ValueError("All lag values must be positive integers")
@@ -87,7 +87,8 @@ class RollingFeatureConfig(BaseModel):
         default=None, description="Columns to group by for rolling calculation"
     )
 
-    @validator("functions")
+    @field_validator("functions")
+    @classmethod
     def validate_functions(cls, v):
         valid_functions = ["mean", "std", "min", "max", "median", "sum", "count"]
         for func in v:
@@ -109,7 +110,8 @@ class TimeFeatureConfig(BaseModel):
         description="Time features to extract",
     )
 
-    @validator("features")
+    @field_validator("features")
+    @classmethod
     def validate_features(cls, v):
         valid_features = [
             "year",
@@ -265,7 +267,8 @@ class FeatureEngineeringConfig(BaseModel):
         default=False, description="Whether to normalize numeric features"
     )
 
-    @validator("handle_missing")
+    @field_validator("handle_missing")
+    @classmethod
     def validate_handle_missing(cls, v):
         valid_strategies = [
             "forward_fill",

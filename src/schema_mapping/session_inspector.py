@@ -1,7 +1,6 @@
 """Tools for inspecting workflow session history stored in SQLAlchemy database."""
 
 import asyncio
-import json
 from pathlib import Path
 from typing import Optional
 

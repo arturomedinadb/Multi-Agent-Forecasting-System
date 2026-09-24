@@ -18,7 +18,6 @@ from .tools.feature_functions import (
 # Direct function imports removed to avoid @function_tool decorator issues
 
 __all__ = [
-    # Feature Engineering
     "FeatureEngineeringConfig",
     "FeatureSet",
     "create_lag_features",
@@ -29,13 +28,4 @@ __all__ = [
     "create_weather_features",
     "create_economic_features",
     "validate_feature_set",
-    # Training
-    # "TrainingConfig",
-    # "ModelConfig",
-    # "PortfolioResult",
-    # "EvaluationFeedback",
-    # "ImprovementAction",
-    # "IterationResult",
-    # "TrainingSession",
-    # "ModelType"
 ]

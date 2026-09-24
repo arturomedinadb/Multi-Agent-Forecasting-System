@@ -4,19 +4,16 @@ Evaluation functions for demand forecasting models.
 
 import json
 import os
+import traceback
 import pandas as pd
 import numpy as np
-import uuid
-from typing import Dict, Any, List, Union, Optional
+from typing import Dict, Any, List, Optional
+
 from datetime import datetime
 import joblib
 import matplotlib.pyplot as plt
 
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
-import xgboost as xgb
-from sklearn.ensemble import RandomForestRegressor
-import lightgbm as lgb
-import catboost as cb
 
 from agents import function_tool
 from ..schemas.forecasting_models import (
@@ -25,6 +22,7 @@ from ..schemas.forecasting_models import (
     EvaluationResults,
     ModelPerformance,
 )
+from .training_functions import SUPPORTED_MODELS
 
 
 def calculate_overall_score(rmse: float, r2: float, mae: float, mape: float) -> float:
@@ -56,6 +54,57 @@ def calculate_overall_score(rmse: float, r2: float, mae: float, mape: float) -> 
     overall = 0.3 * rmse_score + 0.3 * r2_score + 0.2 * mae_score + 0.2 * mape_score
 
     return min(100, max(0, overall))
+
+
+def _save_feature_importance_plot(
+    model: Any,
+    X: pd.DataFrame,
+    y: np.ndarray,
+    output_path: str,
+    title: str,
+) -> Optional[str]:
+    """Best-effort: save a horizontal bar chart of the top 20 feature
+    importances for a tree-based model to output_path. Returns output_path
+    on success, None if the model exposes no importances or plotting fails."""
+    try:
+        feature_names = list(X.columns)
+        importances = None
+        if hasattr(model, "feature_importances_"):
+            importances = getattr(model, "feature_importances_")
+        else:
+            # CatBoost specific
+            try:
+                from catboost import Pool  # type: ignore
+
+                if hasattr(model, "get_feature_importance"):
+                    pool = Pool(X, y, feature_names=feature_names)
+                    importances = model.get_feature_importance(pool)
+            except Exception as e:
+                print(
+                    f"{datetime.now()} - Error getting feature importance for {title}: {str(e)}"
+                )
+
+        if importances is None or len(importances) != len(feature_names):
+            return None
+
+        importances_arr = np.asarray(importances)
+        top_idx = np.argsort(importances_arr)[-20:]
+        top_features = [feature_names[i] for i in top_idx]
+        top_values = importances_arr[top_idx]
+        order = np.argsort(top_values)
+        plt.figure(figsize=(15, 8))
+        plt.barh(np.array(top_features)[order], top_values[order])
+        plt.title(f"Feature Importance - {title}")
+        plt.xlabel("Importance")
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+        return output_path
+    except Exception as e:
+        print(
+            f"{datetime.now()} - Error saving feature importance plot for {title}: {str(e)}"
+        )
+        return None
 
 
 async def evaluate_model_performance(
@@ -98,53 +147,15 @@ async def evaluate_model_performance(
         # Calculate overall score
         overall_score = calculate_overall_score(rmse, r2, mae, mape)
 
-        # Save feature importance and SHAP plots (best-effort)
-        try:
-            model_dir = os.path.dirname(model_path)
-            feature_names = list(X_val.columns)
-
-            # Feature importance (tree-based models)
-            importances = None
-            if hasattr(model, "feature_importances_"):
-                importances = getattr(model, "feature_importances_")
-            else:
-                # CatBoost specific
-                try:
-                    from catboost import Pool  # type: ignore
-
-                    if hasattr(model, "get_feature_importance"):
-                        pool = Pool(X_val, y_val, feature_names=feature_names)
-                        importances = model.get_feature_importance(pool)
-                except Exception as e:
-                    print(
-                        f"{datetime.now()} - Error getting feature importance for {model_name}: {str(e)}"
-                    )
-
-            if importances is not None and len(importances) == len(feature_names):
-                try:
-                    fi_path = f"{model_dir}/{model_name}_feature_importance.png"
-                    # Plot top 20
-                    importances_arr = np.asarray(importances)
-                    top_idx = np.argsort(importances_arr)[-20:]
-                    top_features = [feature_names[i] for i in top_idx]
-                    top_values = importances_arr[top_idx]
-                    order = np.argsort(top_values)
-                    plt.figure(figsize=(15, 8))
-                    plt.barh(np.array(top_features)[order], top_values[order])
-                    plt.title(f"Feature Importance - {model_name}")
-                    plt.xlabel("Importance")
-                    plt.tight_layout()
-                    plt.savefig(fi_path)
-                    plt.close()
-                except Exception as e:
-                    print(
-                        f"{datetime.now()} - Error saving feature importance plot for {model_name}: {str(e)}"
-                    )
-
-        except Exception as e:
-            print(
-                f"{datetime.now()} - Error saving feature importance plot for {model_name}: {str(e)}"
-            )
+        # Save feature importance plot (best-effort)
+        model_dir = os.path.dirname(model_path)
+        _save_feature_importance_plot(
+            model,
+            X_val,
+            y_val,
+            output_path=f"{model_dir}/{model_name}_feature_importance.png",
+            title=model_name,
+        )
 
         print(
             f"{datetime.now()} - Evaluation completed for {model_name} on validation set"
@@ -173,9 +184,9 @@ async def evaluate_model_performance(
         return {
             "success": False,
             "error": str(e),
-            "model_name": model_name,
+            "model_name": model_info.model_name,
             "iteration": iteration,
-            "message": f"Error evaluating {model_name}: {str(e)}",
+            "message": f"Error evaluating {model_info.model_name}: {str(e)}",
         }
 
 
@@ -323,11 +334,13 @@ async def check_convergence(
     previous_performance_json: optional JSON object string of the previous iteration's
     performance (e.g. '{"rmse": 12.3}'), used to measure improvement.
     """
-    previous_performance = (
-        json.loads(previous_performance_json) if previous_performance_json else None
-    )
+    iteration = evaluation_results.iteration
     try:
-        iteration = evaluation_results.iteration
+        previous_performance = (
+            json.loads(previous_performance_json)
+            if previous_performance_json
+            else None
+        )
         print(f"\n{datetime.now()} - Checking convergence at iteration {iteration}")
         # Check if max iterations reached
         if iteration >= max_iterations:
@@ -483,14 +496,6 @@ async def save_best_model_for_inference(
             )
             inference_model = joblib.load(trained_model_path)
         else:
-            # Map model types to model classes
-            SUPPORTED_MODELS = {
-                "xgboost": xgb.XGBRegressor,
-                "random_forest": RandomForestRegressor,
-                "lightgbm": lgb.LGBMRegressor,
-                "catboost": cb.CatBoostRegressor,
-            }
-
             model_class = SUPPORTED_MODELS.get(model_type_str)
             if not model_class:
                 return {
@@ -523,60 +528,17 @@ async def save_best_model_for_inference(
         joblib.dump(inference_model, inference_model_path)
         print(f"{datetime.now()} - Retrained model saved to: {inference_model_path}")
 
-        # Generate and save feature importance graph
-        feature_importance_path = None
-        try:
-            feature_names = list(X_train_val.columns)
-            importances = None
-
-            # Feature importance (tree-based models)
-            if hasattr(inference_model, "feature_importances_"):
-                importances = getattr(inference_model, "feature_importances_")
-            else:
-                # CatBoost specific
-                try:
-                    from catboost import Pool  # type: ignore
-
-                    if hasattr(inference_model, "get_feature_importance"):
-                        pool = Pool(
-                            X_train_val, y_train_val, feature_names=feature_names
-                        )
-                        importances = inference_model.get_feature_importance(pool)
-                except Exception as e:
-                    print(
-                        f"{datetime.now()} - Error getting feature importance for inference model: {str(e)}"
-                    )
-
-            if importances is not None and len(importances) == len(feature_names):
-                try:
-                    feature_importance_path = (
-                        f"{inference_dir}/best_{best_model_name}_feature_importance.png"
-                    )
-                    # Plot top 20
-                    importances_arr = np.asarray(importances)
-                    top_idx = np.argsort(importances_arr)[-20:]
-                    top_features = [feature_names[i] for i in top_idx]
-                    top_values = importances_arr[top_idx]
-                    order = np.argsort(top_values)
-                    plt.figure(figsize=(15, 8))
-                    plt.barh(np.array(top_features)[order], top_values[order])
-                    plt.title(
-                        f"Feature Importance - {best_model_name} (Inference Model)"
-                    )
-                    plt.xlabel("Importance")
-                    plt.tight_layout()
-                    plt.savefig(feature_importance_path)
-                    plt.close()
-                    print(
-                        f"{datetime.now()} - Feature importance graph saved to: {feature_importance_path}"
-                    )
-                except Exception as e:
-                    print(
-                        f"{datetime.now()} - Error saving feature importance plot for inference model: {str(e)}"
-                    )
-        except Exception as e:
+        # Generate and save feature importance graph (best-effort)
+        feature_importance_path = _save_feature_importance_plot(
+            inference_model,
+            X_train_val,
+            y_train_val,
+            output_path=f"{inference_dir}/best_{best_model_name}_feature_importance.png",
+            title=f"{best_model_name} (Inference Model)",
+        )
+        if feature_importance_path:
             print(
-                f"{datetime.now()} - Error generating feature importance for inference model: {str(e)}"
+                f"{datetime.now()} - Feature importance graph saved to: {feature_importance_path}"
             )
 
         # Calculate metrics on combined data for reference
@@ -676,8 +638,6 @@ async def save_best_model_for_inference(
 
         except Exception as e:
             print(f"{datetime.now()} - Error making predictions on test set: {str(e)}")
-            import traceback
-
             traceback.print_exc()
 
         # Save model metadata
