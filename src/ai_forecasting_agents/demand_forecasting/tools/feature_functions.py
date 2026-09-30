@@ -729,7 +729,11 @@ def process_feature_engineering_pipeline(
         elif config.handle_missing == "interpolate":
             df_result = df_result.interpolate()
         elif config.handle_missing == "zero_fill":
-            df_result = df_result.fillna(0)
+            # Only numeric columns: a Categorical column (e.g. temp_category
+            # from create_weather_features) rejects fillna(0) outright unless
+            # 0 was already one of its declared categories.
+            numeric_cols = df_result.select_dtypes(include=[np.number]).columns
+            df_result[numeric_cols] = df_result[numeric_cols].fillna(0)
         elif config.handle_missing == "drop":
             df_result = df_result.dropna()
 
