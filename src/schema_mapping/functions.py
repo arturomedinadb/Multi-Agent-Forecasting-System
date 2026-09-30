@@ -1307,10 +1307,13 @@ def _extract_first_json_tolerant(text: str) -> Any:
     return _extract_first_json(text.replace("\\", "/"))
 
 
-def _parse_json_field(raw: str) -> Any:
+def _parse_json_field(raw: Any) -> Any:
     """Parse a JSON tool-call argument, tolerating the malformations seen in
-    practice: control characters, a raw single backslash in a Windows path,
-    and extra content appended after a complete value."""
+    practice: an argument that already arrived as a parsed dict/list rather
+    than a string, control characters, a raw single backslash in a Windows
+    path, and extra content appended after a complete value."""
+    if isinstance(raw, (dict, list)):
+        return raw
     cleaned = _sanitize_json_string(raw)
     try:
         return _parse_json_tolerant(cleaned)
@@ -2004,26 +2007,10 @@ def generate_final_workflow_report(
         Formatted markdown report with all metrics and file information
     """
     try:
-        data_prep_eval = (
-            json.loads(data_prep_eval_json)
-            if isinstance(data_prep_eval_json, str)
-            else data_prep_eval_json
-        )
-        column_mapping_eval = (
-            json.loads(column_mapping_eval_json)
-            if isinstance(column_mapping_eval_json, str)
-            else column_mapping_eval_json
-        )
-        data_integration_eval = (
-            json.loads(data_integration_eval_json)
-            if isinstance(data_integration_eval_json, str)
-            else data_integration_eval_json
-        )
-        mapped_files = (
-            json.loads(mapped_files_json)
-            if isinstance(mapped_files_json, str)
-            else mapped_files_json
-        )
+        data_prep_eval = _parse_json_field(data_prep_eval_json)
+        column_mapping_eval = _parse_json_field(column_mapping_eval_json)
+        data_integration_eval = _parse_json_field(data_integration_eval_json)
+        mapped_files = _parse_json_field(mapped_files_json)
 
         blocked_reason = _first_blocked_reason(
             data_prep_eval, column_mapping_eval, data_integration_eval
